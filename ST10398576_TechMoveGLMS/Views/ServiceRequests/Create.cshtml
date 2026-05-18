@@ -33,9 +33,10 @@
 
     <div class="form-group">
         <label asp-for="ServiceStatus" class="control-label"> Status </label>
-        <input asp-for="ServiceStatus" class="form-control" />
+        <select asp-for="ServiceStatus" class="form-control" asp-items="ViewBag.StatusList"></select>
         <span asp-validation-for="ServiceStatus" class="text-danger"></span>
     </div>
+
 
     <button type="submit" class="btn btn-primary">Create</button>
     <a asp-action="Index" class="btn btn-secondary">Back to List</a>

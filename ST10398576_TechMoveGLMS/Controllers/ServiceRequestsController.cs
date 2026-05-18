@@ -15,24 +15,22 @@ public class ServiceRequestsController : Controller
         _context = context;
     }
 
-    public async Task<IActionResult> Search(DateTime? startDate, DateTime? endDate, string status)
+    // GET: SERVICEREQUESTS and Search Feature
+    public async Task<IActionResult> Index(string? status, DateTime? startDate, DateTime? endDate)
     {
-        var query = _context.ServiceRequests.AsQueryable();
-
-        if (startDate.HasValue && endDate.HasValue)
-            query = query.Where(sr => sr.Contract.StartDate >= startDate && sr.Contract.EndDate <= endDate);
+        var query = _context.ServiceRequests.Include(sr => sr.Contract).AsQueryable();
 
         if (!string.IsNullOrEmpty(status))
             query = query.Where(sr => sr.ServiceStatus == status);
 
-        return View("Index", await query.ToListAsync());
-    }
+        if (startDate.HasValue && endDate.HasValue)
+            query = query.Where(sr => sr.Contract.StartDate >= startDate && sr.Contract.EndDate <= endDate);
 
+        ViewData["status"] = status;
+        ViewData["startDate"] = startDate?.ToString("yyyy-MM-dd");
+        ViewData["endDate"] = endDate?.ToString("yyyy-MM-dd");
 
-    // GET: SERVICEREQUESTS
-    public async Task<IActionResult> Index()    
-    {
-        return View(await _context.ServiceRequests.ToListAsync());
+        return View(await query.ToListAsync());
     }
 
     // GET: SERVICEREQUESTS/Details/5
@@ -56,6 +54,9 @@ public class ServiceRequestsController : Controller
     // GET: SERVICEREQUESTS/Create
     public IActionResult Create()
     {
+        // Show ContractId dropdown with ContractStatus or ClientName as display text
+        ViewData["ContractId"] = new SelectList(_context.Contracts.Include(c => c.Client), "ContractId", "Client.ClientName");
+        ViewData["StatusList"] = new SelectList(new[] { "Pending", "In Progress", "Completed", "Cancelled", "On Hold" });
         return View();
     }
 
@@ -73,9 +74,9 @@ public class ServiceRequestsController : Controller
             return View(servicerequest);
         }
 
-        if (contract.ContractStatus == "Expired" || contract.ContractStatus == "OnHold")
+        if (contract.ContractStatus == "Expired" || contract.ContractStatus == "On Hold")
         {
-            ModelState.AddModelError("", "Cannot create a request for expired or on-hold contracts.");
+            ModelState.AddModelError("", "Cannot create a request for Expired or On Hold contracts.");
             return View(servicerequest);
         }
 
@@ -89,6 +90,8 @@ public class ServiceRequestsController : Controller
             return RedirectToAction(nameof(Index));
         }
 
+        ViewData["ContractId"] = new SelectList(_context.Contracts.Include(c => c.Client), "ContractId", "Client.ClientName", servicerequest.ContractId);
+        ViewData["StatusList"] = new SelectList(new[] { "Pending", "In Progress", "Completed", "Cancelled", "On Hold" }, servicerequest.ServiceStatus);
         return View(servicerequest);
     }
 
@@ -114,6 +117,9 @@ public class ServiceRequestsController : Controller
         {
             return NotFound();
         }
+
+        ViewData["ContractId"] = new SelectList(_context.Contracts.Include(c => c.Client), "ContractId", "Client.ClientName", servicerequest.ContractId);
+        ViewData["StatusList"] = new SelectList(new[] { "Pending", "In Progress", "Completed", "Cancelled", "On Hold" }, servicerequest.ServiceStatus);
         return View(servicerequest);
     }
 
@@ -149,6 +155,9 @@ public class ServiceRequestsController : Controller
             }
             return RedirectToAction(nameof(Index));
         }
+
+        ViewData["ContractId"] = new SelectList(_context.Contracts.Include(c => c.Client), "ContractId", "Client.ClientName", servicerequest.ContractId);
+        ViewData["StatusList"] = new SelectList(new[] { "Pending", "In Progress", "Completed", "Cancelled", "On Hold" }, servicerequest.ServiceStatus);
         return View(servicerequest);
     }
 

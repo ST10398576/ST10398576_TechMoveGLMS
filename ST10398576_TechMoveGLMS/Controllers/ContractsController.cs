@@ -15,12 +15,29 @@ public class ContractsController : Controller
         _env = env;
     }
 
-    // GET: Contracts
-    public async Task<IActionResult> Index()
-    {
-        var contracts = await _context.Contracts.Include(c => c.Client).ToListAsync();
-        return View(contracts);
-    }
+    // GET: Contracts and Search Feature
+public async Task<IActionResult> Index(string? status, string? serviceLevel, DateTime? startDate, DateTime? endDate)
+{
+    var query = _context.Contracts.Include(c => c.Client).AsQueryable();
+
+    if (!string.IsNullOrEmpty(status))
+        query = query.Where(c => c.ContractStatus == status);
+
+    if (!string.IsNullOrEmpty(serviceLevel))
+        query = query.Where(c => c.ContractServiceLevel == serviceLevel);
+
+    if (startDate.HasValue && endDate.HasValue)
+        query = query.Where(c => c.StartDate >= startDate && c.EndDate <= endDate);
+
+    ViewData["status"] = status;
+    ViewData["serviceLevel"] = serviceLevel;
+    ViewData["startDate"] = startDate?.ToString("yyyy-MM-dd");
+    ViewData["endDate"] = endDate?.ToString("yyyy-MM-dd");
+
+    return View(await query.ToListAsync());
+}
+
+
 
     // GET: Contracts/Details/5
     public async Task<IActionResult> Details(int? contractid)
@@ -94,7 +111,7 @@ public class ContractsController : Controller
     // POST: Contracts/Edit/5
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int contractid, [Bind("ContractId,ClientId,StartDate,EndDate,ContractStatus,ContractServiceLevel,PdfFilePath")] Contract contract, IFormFile file)
+    public async Task<IActionResult> Edit(int contractid, [Bind("ContractId,ClientId,StartDate,EndDate,ContractStatus,ContractServiceLevel,PdfFilePath")] Contract contract, IFormFile? file)
     {
         if (contractid != contract.ContractId) return NotFound();
 
@@ -102,6 +119,7 @@ public class ContractsController : Controller
         {
             try
             {
+                // Only replace PDF if a new one is uploaded
                 if (file != null && file.ContentType == "application/pdf")
                 {
                     var uploads = Path.Combine(_env.WebRootPath, "pdfs");
@@ -114,6 +132,11 @@ public class ContractsController : Controller
                     }
 
                     contract.PdfFilePath = "/pdfs/" + Path.GetFileName(filePath);
+                }
+                else
+                {
+                    // Preserve existing PDF path if no new file uploaded
+                    _context.Entry(contract).Property(c => c.PdfFilePath).IsModified = false;
                 }
 
                 _context.Update(contract);

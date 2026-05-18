@@ -79,7 +79,7 @@ public class ClientsController : Controller
     // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int? clientid, [Bind("ClientId,ClientsName,ClientsContactDetails,ClientsRegion,ClientsContracts")] Client client)
+    public async Task<IActionResult> Edit(int? clientid, [Bind("ClientId,ClientName,ClientContactDetails,ClientRegion")] Client client)
     {
         if (clientid != client.ClientId)
         {
@@ -108,6 +108,7 @@ public class ClientsController : Controller
         }
         return View(client);
     }
+
 
     // GET: CLIENTS/Delete/5
     public async Task<IActionResult> Delete(int? clientid)

@@ -2,7 +2,7 @@
     ViewData["Title"] = "Dashboard";
 }
 
-<h2>Dashboard</h2>
+<h2>TechMove Dashboard</h2>
 
 <div class="row">
     <div class="col-md-4">
@@ -35,45 +35,3 @@
         </div>
     </div>
 </div>
-
-<h3>Recent Contracts</h3>
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Client</th>
-            <th>Start Date</th>
-            <th>Status</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var contract in Model.RecentContracts)
-        {
-            <tr>
-                <td>@contract.Client?.ClientName</td>
-                <td>@contract.StartDate.ToShortDateString()</td>
-                <td>@contract.ContractStatus</td>
-            </tr>
-        }
-    </tbody>
-</table>
-
-<h3>Recent Service Requests</h3>
-<table class="table table-striped">
-    <thead>
-        <tr>
-            <th>Description</th>
-            <th>Cost</th>
-            <th>Status</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var request in Model.RecentRequests)
-        {
-            <tr>
-                <td>@request.ServiceDescription</td>
-                <td>@request.ServiceCost</td>
-                <td>@request.ServiceStatus</td>
-            </tr>
-        }
-    </tbody>
-</table>

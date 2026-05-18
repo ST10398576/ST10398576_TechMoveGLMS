@@ -12,28 +12,32 @@
     <input type="hidden" asp-for="ServiceRequestId" />
 
     <div class="form-group">
-        <label asp-for="ContractId" class="control-label"></label>
-        <input asp-for="ContractId" class="form-control" />
+        <label asp-for="ContractId" class="control-label"> Contract ID </label>
+        <select asp-for="ContractId" class="form-control" asp-items="ViewBag.ContractId"></select>
         <span asp-validation-for="ContractId" class="text-danger"></span>
     </div>
 
     <div class="form-group">
-        <label asp-for="ServiceDescription" class="control-label"></label>
+        <label asp-for="ServiceDescription" class="control-label"> Description </label>
         <input asp-for="ServiceDescription" class="form-control" />
         <span asp-validation-for="ServiceDescription" class="text-danger"></span>
     </div>
 
     <div class="form-group">
-        <label asp-for="ServiceCost" class="control-label"></label>
+        <label asp-for="ServiceCost" class="control-label"> Cost </label>
         <input asp-for="ServiceCost" class="form-control" />
         <span asp-validation-for="ServiceCost" class="text-danger"></span>
+        <small class="form-text text-muted">
+            Update amount in USD — system will convert to ZAR automatically.
+        </small>
     </div>
 
     <div class="form-group">
-        <label asp-for="ServiceStatus" class="control-label"></label>
-        <input asp-for="ServiceStatus" class="form-control" />
+        <label asp-for="ServiceStatus" class="control-label"> Status </label>
+        <select asp-for="ServiceStatus" class="form-control" asp-items="ViewBag.StatusList"></select>
         <span asp-validation-for="ServiceStatus" class="text-danger"></span>
     </div>
+
 
     <button type="submit" class="btn btn-primary">Save</button>
     <a asp-action="Index" class="btn btn-secondary">Back to List</a>
