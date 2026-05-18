@@ -1,0 +1,37 @@
+@model ST10398576_TechMoveGLMS.Models.Contract
+
+@{
+    ViewData["Title"] = "Contract Details";
+}
+
+<h2>Contract Details</h2>
+
+<dl class="row">
+    <dt class="col-sm-2">ClientId</dt>
+    <dd class="col-sm-10">@Model.ClientId</dd>
+
+    <dt class="col-sm-2">StartDate</dt>
+    <dd class="col-sm-10">@Model.StartDate.ToShortDateString()</dd>
+
+    <dt class="col-sm-2">EndDate</dt>
+    <dd class="col-sm-10">@Model.EndDate.ToShortDateString()</dd>
+
+    <dt class="col-sm-2">Status</dt>
+    <dd class="col-sm-10">@Model.ContractStatus</dd>
+
+    <dt class="col-sm-2">ServiceLevel</dt>
+    <dd class="col-sm-10">@Model.ContractServiceLevel</dd>
+
+    <dt class="col-sm-2">Agreement</dt>
+    <dd class="col-sm-10">
+        @if (!string.IsNullOrEmpty(Model.PdfFilePath))
+        {
+            <a href="@Url.Content(Model.PdfFilePath)" target="_blank">View PDF</a>
+        }
+    </dd>
+</dl>
+
+<p>
+    <a asp-action="Edit" asp-route-contractid="@Model.ContractId" class="btn btn-primary">Edit</a> |
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</p>

@@ -1,0 +1,37 @@
+@model IEnumerable<ST10398576_TechMoveGLMS.Models.Client>
+
+@{
+    ViewData["Title"] = "Clients";
+}
+
+<h2>Clients</h2>
+
+<p>
+    <a asp-action="Create" class="btn btn-success">Create New</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Contact Details</th>
+            <th>Region</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.ClientName</td>
+                <td>@item.ClientContactDetails</td>
+                <td>@item.ClientRegion</td>
+                <td>
+                    <a asp-action="Edit" asp-route-clientid="@item.ClientId">Edit</a> |
+                    <a asp-action="Details" asp-route-clientid="@item.ClientId">Details</a> |
+                    <a asp-action="Delete" asp-route-clientid="@item.ClientId">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

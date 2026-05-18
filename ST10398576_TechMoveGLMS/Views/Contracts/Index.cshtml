@@ -1,0 +1,48 @@
+@model IEnumerable<ST10398576_TechMoveGLMS.Models.Contract>
+
+@{
+    ViewData["Title"] = "Contracts";
+}
+
+<h2>Contracts</h2>
+
+<p>
+    <a asp-action="Create" class="btn btn-success">Create New</a>
+</p>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ClientId</th>
+            <th>StartDate</th>
+            <th>EndDate</th>
+            <th>Status</th>
+            <th>ServiceLevel</th>
+            <th>Agreement</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.ClientId</td>
+                <td>@item.StartDate.ToShortDateString()</td>
+                <td>@item.EndDate.ToShortDateString()</td>
+                <td>@item.ContractStatus</td>
+                <td>@item.ContractServiceLevel</td>
+                <td>
+                    @if (!string.IsNullOrEmpty(item.PdfFilePath))
+                    {
+                        <a href="@Url.Content(item.PdfFilePath)" target="_blank">View PDF</a>
+                    }
+                </td>
+                <td>
+                    <a asp-action="Edit" asp-route-contractid="@item.ContractId">Edit</a> |
+                    <a asp-action="Details" asp-route-contractid="@item.ContractId">Details</a> |
+                    <a asp-action="Delete" asp-route-contractid="@item.ContractId">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

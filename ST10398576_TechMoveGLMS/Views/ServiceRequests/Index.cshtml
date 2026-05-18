@@ -1,0 +1,54 @@
+@model IEnumerable<ST10398576_TechMoveGLMS.Models.ServiceRequest>
+
+@{
+    ViewData["Title"] = "Service Requests";
+}
+
+<h2>Service Requests</h2>
+<p>
+    <a asp-action="Create" class="btn btn-success">Create New</a>
+</p>
+
+<h2> Search Filter </h2>
+
+<!-- Search/Filter Form -->
+<form asp-action="Search" method="get" class="form-inline mb-3">
+    <label for="startDate">Start Date:</label>
+    <input type="date" name="startDate" class="form-control mx-2" />
+
+    <label for="endDate">End Date:</label>
+    <input type="date" name="endDate" class="form-control mx-2" />
+
+    <label for="status">Status:</label>
+    <input type="text" name="status" class="form-control mx-2" />
+
+    <button type="submit" class="btn btn-primary">Filter</button>
+</form>
+
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>ContractId</th>
+            <th>Description</th>
+            <th>Cost (ZAR)</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.ContractId</td>
+                <td>@item.ServiceDescription</td>
+                <td>@item.ServiceCost</td>
+                <td>@item.ServiceStatus</td>
+                <td>
+                    <a asp-action="Edit" asp-route-servicerequestid="@item.ServiceRequestId">Edit</a> |
+                    <a asp-action="Details" asp-route-servicerequestid="@item.ServiceRequestId">Details</a> |
+                    <a asp-action="Delete" asp-route-servicerequestid="@item.ServiceRequestId">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

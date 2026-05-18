@@ -1,8 +1,79 @@
 ﻿@{
-    ViewData["Title"] = "Home Page";
+    ViewData["Title"] = "Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
+<h2>Dashboard</h2>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card bg-light mb-3">
+            <div class="card-header">Clients</div>
+            <div class="card-body">
+                <h4>@Model.ClientCount</h4>
+                <a asp-controller="Clients" asp-action="Index" class="btn btn-primary">View Clients</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-light mb-3">
+            <div class="card-header">Contracts</div>
+            <div class="card-body">
+                <h4>@Model.ContractCount</h4>
+                <a asp-controller="Contracts" asp-action="Index" class="btn btn-primary">View Contracts</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card bg-light mb-3">
+            <div class="card-header">Service Requests</div>
+            <div class="card-body">
+                <h4>@Model.ServiceRequestCount</h4>
+                <a asp-controller="ServiceRequests" asp-action="Index" class="btn btn-primary">View Requests</a>
+            </div>
+        </div>
+    </div>
 </div>
+
+<h3>Recent Contracts</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Client</th>
+            <th>Start Date</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var contract in Model.RecentContracts)
+        {
+            <tr>
+                <td>@contract.Client?.ClientName</td>
+                <td>@contract.StartDate.ToShortDateString()</td>
+                <td>@contract.ContractStatus</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<h3>Recent Service Requests</h3>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th>Description</th>
+            <th>Cost</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var request in Model.RecentRequests)
+        {
+            <tr>
+                <td>@request.ServiceDescription</td>
+                <td>@request.ServiceCost</td>
+                <td>@request.ServiceStatus</td>
+            </tr>
+        }
+    </tbody>
+</table>

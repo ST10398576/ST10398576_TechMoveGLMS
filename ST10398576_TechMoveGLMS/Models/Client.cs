@@ -3,11 +3,12 @@
     public class Client
     {
         public int ClientId { get; set; }
-        public string Name { get; set; }
-        public string ContactDetails { get; set; }
-        public string Region { get; set; }
+        public string ClientName { get; set; }
+        public string ClientContactDetails { get; set; }
+        public string ClientRegion { get; set; }
 
-        public ICollection<Contract> Contracts { get; set; }
+        // Navigation property
+        public ICollection<Contract>? Contracts { get; set; }  // make nullable
     }
 
 }

@@ -1,0 +1,23 @@
+@model ST10398576_TechMoveGLMS.Models.Client
+
+@{
+    ViewData["Title"] = "Client Details";
+}
+
+<h2>Client Details</h2>
+
+<dl class="row">
+    <dt class="col-sm-2">Name</dt>
+    <dd class="col-sm-10">@Model.ClientName</dd>
+
+    <dt class="col-sm-2">Contact Details</dt>
+    <dd class="col-sm-10">@Model.ClientContactDetails</dd>
+
+    <dt class="col-sm-2">Region</dt>
+    <dd class="col-sm-10">@Model.ClientRegion</dd>
+</dl>
+
+<p>
+    <a asp-action="Edit" asp-route-clientid="@Model.ClientId" class="btn btn-primary">Edit</a> |
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</p>

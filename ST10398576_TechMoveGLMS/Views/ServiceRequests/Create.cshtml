@@ -1,0 +1,42 @@
+@model ST10398576_TechMoveGLMS.Models.ServiceRequest
+
+@{
+    ViewData["Title"] = "Create Service Request";
+}
+
+<h2>Create Service Request</h2>
+
+<!-- Show validation errors -->
+<div asp-validation-summary="All" class="text-danger"></div>
+
+<form asp-action="Create" method="post" enctype="multipart/form-data">
+    <div class="form-group">
+        <label asp-for="ContractId" class="control-label"> Contract ID </label>
+        <select asp-for="ContractId" class="form-control" asp-items="ViewBag.ContractId"></select>
+        <span asp-validation-for="ContractId" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="ServiceDescription" class="control-label"> Description </label>
+        <input asp-for="ServiceDescription" class="form-control" />
+        <span asp-validation-for="ServiceDescription" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="ServiceCost" class="control-label"> Cost </label>
+        <input asp-for="ServiceCost" class="form-control" />
+        <span asp-validation-for="ServiceCost" class="text-danger"></span>
+        <small class="form-text text-muted">
+            Enter amount in USD — system will convert to ZAR automatically.
+        </small>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="ServiceStatus" class="control-label"> Status </label>
+        <input asp-for="ServiceStatus" class="form-control" />
+        <span asp-validation-for="ServiceStatus" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Create</button>
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</form>

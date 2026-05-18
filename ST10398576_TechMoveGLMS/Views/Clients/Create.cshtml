@@ -1,0 +1,32 @@
+@model ST10398576_TechMoveGLMS.Models.Client
+
+@{
+    ViewData["Title"] = "Create Client";
+}
+
+<h2>Create Client</h2>
+
+<div asp-validation-summary="All" class="text-danger"></div>
+
+<form asp-action="Create" method="post">
+    <div class="form-group">
+        <label asp-for="ClientName" class="control-label">Client Name </label>
+        <input asp-for="ClientName" class="form-control" />
+        <span asp-validation-for="ClientName" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="ClientContactDetails" class="control-label">Contact Details </label>
+        <input asp-for="ClientContactDetails" class="form-control" />
+        <span asp-validation-for="ClientContactDetails" class="text-danger"></span>
+    </div>
+
+    <div class="form-group">
+        <label asp-for="ClientRegion" class="control-label"> Region </label>
+        <input asp-for="ClientRegion" class="form-control" />
+        <span asp-validation-for="ClientRegion" class="text-danger"></span>
+    </div>
+
+    <button type="submit" class="btn btn-primary">Create</button>
+    <a asp-action="Index" class="btn btn-secondary">Back to List</a>
+</form>
