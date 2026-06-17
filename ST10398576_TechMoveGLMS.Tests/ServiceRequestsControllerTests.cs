@@ -1,174 +1,105 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Moq;
+using Moq.Protected;
 using ST10398576_TechMoveGLMS.Controllers;
-using ST10398576_TechMoveGLMS.DBContext;
 using ST10398576_TechMoveGLMS.Models;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using Xunit;
-using System.Threading.Tasks;
 
 public class ServiceRequestsControllerTests
 {
-    private TechMoveDBContext GetContext()
+    private HttpClient CreateMockHttpClient(object responseObject)
     {
-        var options = new DbContextOptionsBuilder<TechMoveDBContext>()
-            .UseInMemoryDatabase(Guid.NewGuid().ToString()) // unique DB per test
-            .Options;
-        return new TechMoveDBContext(options);
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(JsonSerializer.Serialize(responseObject), Encoding.UTF8, "application/json")
+            });
+
+        return new HttpClient(handlerMock.Object)
+        {
+            BaseAddress = new Uri("https://localhost:5001")
+        };
     }
 
     [Fact]
-    public async Task Create_AddsServiceRequest_WhenContractIsActive()
+    public async Task Index_ReturnsServiceRequests()
     {
-        // Arrange
-        var context = GetContext();
-
-        // Seed an active contract with required fields
-        var contract = new Contract
+        var mockClient = CreateMockHttpClient(new List<ServiceRequest>
         {
-            ClientId = 1,
-            ContractStatus = "Active",
-            ContractServiceLevel = "High",
-            StartDate = DateTime.Now,
-            EndDate = DateTime.Now.AddMonths(6)
-        };
-        context.Contracts.Add(contract);
-        await context.SaveChangesAsync();
+            new ServiceRequest { ServiceRequestId = 1, ServiceDescription = "Test", ServiceStatus = "Pending" }
+        });
 
-        var controller = new ServiceRequestsController(context);
+        var controller = new ServiceRequestsController(new HttpClientFactoryMock(mockClient));
+        var result = await controller.Index(null, null, null) as ViewResult;
 
-        // ServiceRequest with required fields
-        var request = new ServiceRequest
-        {
-            ContractId = contract.ContractId, // use EF‑assigned ID
-            ServiceDescription = "Test Service",
-            ServiceCost = 100,
-            ServiceStatus = "Pending"
-        };
+        var model = Assert.IsAssignableFrom<IEnumerable<ServiceRequest>>(result.Model);
+        Assert.Single(model);
+    }
 
-        // Act
+    [Fact]
+    public async Task Details_ReturnsServiceRequest()
+    {
+        var mockClient = CreateMockHttpClient(new ServiceRequest { ServiceRequestId = 1, ServiceDescription = "Test" });
+        var controller = new ServiceRequestsController(new HttpClientFactoryMock(mockClient));
+
+        var result = await controller.Details(1) as ViewResult;
+        var model = Assert.IsAssignableFrom<ServiceRequest>(result.Model);
+
+        Assert.Equal("Test", model.ServiceDescription);
+    }
+
+    [Fact]
+    public async Task Create_AddsServiceRequest()
+    {
+        var mockClient = CreateMockHttpClient(new ServiceRequest { ServiceRequestId = 1, ServiceStatus = "Pending" });
+        var controller = new ServiceRequestsController(new HttpClientFactoryMock(mockClient));
+
+        var request = new ServiceRequest { ContractId = 1, ServiceDescription = "Test", ServiceCost = 100, ServiceStatus = "Pending" };
         var result = await controller.Create(request);
 
-        // Assert → should redirect on success
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(1, await context.ServiceRequests.CountAsync());
-    }
-
-    [Fact]
-    public async Task Create_Fails_WhenContractIsExpired()
-    {
-        // Arrange
-        var context = GetContext();
-
-        // Seed an expired contract with all required fields
-        var contract = new Contract
-        {
-            ClientId = 1,
-            ContractStatus = "Expired",
-            ContractServiceLevel = "Low",
-            StartDate = DateTime.Now.AddMonths(-12),
-            EndDate = DateTime.Now.AddMonths(-6)
-        };
-        context.Contracts.Add(contract);
-        await context.SaveChangesAsync();
-
-        var controller = new ServiceRequestsController(context);
-
-        // ServiceRequest with required fields
-        var request = new ServiceRequest
-        {
-            ContractId = contract.ContractId, // use EF‑assigned ID
-            ServiceDescription = "Test Service",
-            ServiceCost = 100,
-            ServiceStatus = "Pending"
-        };
-
-        // Act
-        var result = await controller.Create(request);
-
-        // Assert → should return ViewResult (validation error)
-        Assert.IsType<ViewResult>(result);
-        Assert.Equal(0, await context.ServiceRequests.CountAsync());
     }
 
     [Fact]
     public async Task Edit_UpdatesServiceRequest()
     {
-        // Arrange
-        var context = GetContext();
+        var mockClient = CreateMockHttpClient(new ServiceRequest { ServiceRequestId = 1, ServiceDescription = "Updated" });
+        var controller = new ServiceRequestsController(new HttpClientFactoryMock(mockClient));
 
-        // Seed an active contract (required for ServiceRequest)
-        var contract = new Contract
-        {
-            ClientId = 1,
-            ContractStatus = "Active",
-            ContractServiceLevel = "High",
-            StartDate = DateTime.Now,
-            EndDate = DateTime.Now.AddMonths(6)
-        };
-        context.Contracts.Add(contract);
-        await context.SaveChangesAsync();
+        var request = new ServiceRequest { ServiceRequestId = 1, ServiceDescription = "Updated" };
+        var result = await controller.Edit(1, request);
 
-        // Seed a service request with required fields
-        var request = new ServiceRequest
-        {
-            ContractId = contract.ContractId,
-            ServiceDescription = "Old Description",
-            ServiceCost = 200,
-            ServiceStatus = "Pending"
-        };
-        context.ServiceRequests.Add(request);
-        await context.SaveChangesAsync();
-
-        var controller = new ServiceRequestsController(context);
-
-        // Update description
-        request.ServiceDescription = "Updated Description";
-
-        // Act
-        var result = await controller.Edit(request.ServiceRequestId, request);
-
-        // Assert
         Assert.IsType<RedirectToActionResult>(result);
-        var updated = await context.ServiceRequests.FindAsync(request.ServiceRequestId);
-        Assert.Equal("Updated Description", updated.ServiceDescription);
     }
 
     [Fact]
-    public async Task Delete_RemovesServiceRequest()
+    public async Task Delete_ReturnsServiceRequestForConfirmation()
     {
-        // Arrange
-        var context = GetContext();
+        var mockClient = CreateMockHttpClient(new ServiceRequest { ServiceRequestId = 1, ServiceDescription = "ToDelete" });
+        var controller = new ServiceRequestsController(new HttpClientFactoryMock(mockClient));
 
-        // Seed an active contract (required for ServiceRequest)
-        var contract = new Contract
-        {
-            ClientId = 1,
-            ContractStatus = "Active",
-            ContractServiceLevel = "High",
-            StartDate = DateTime.Now,
-            EndDate = DateTime.Now.AddMonths(6)
-        };
-        context.Contracts.Add(contract);
-        await context.SaveChangesAsync();
+        var result = await controller.Delete(1) as ViewResult;
+        var model = Assert.IsAssignableFrom<ServiceRequest>(result.Model);
 
-        // Seed a service request with required fields
-        var request = new ServiceRequest
-        {
-            ContractId = contract.ContractId,
-            ServiceDescription = "DeleteMe",
-            ServiceCost = 50,
-            ServiceStatus = "Completed"
-        };
-        context.ServiceRequests.Add(request);
-        await context.SaveChangesAsync();
+        Assert.Equal("ToDelete", model.ServiceDescription);
+    }
 
-        var controller = new ServiceRequestsController(context);
+    [Fact]
+    public async Task DeleteConfirmed_RemovesServiceRequest()
+    {
+        var mockClient = CreateMockHttpClient(new { });
+        var controller = new ServiceRequestsController(new HttpClientFactoryMock(mockClient));
 
-        // Act
-        var result = await controller.DeleteConfirmed(request.ServiceRequestId);
-
-        // Assert
+        var result = await controller.DeleteConfirmed(1);
         Assert.IsType<RedirectToActionResult>(result);
-        Assert.Equal(0, await context.ServiceRequests.CountAsync());
     }
 }

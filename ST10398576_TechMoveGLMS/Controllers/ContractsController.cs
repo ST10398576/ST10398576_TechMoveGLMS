@@ -1,189 +1,201 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using ST10398576_TechMoveGLMS.DBContext;
 using ST10398576_TechMoveGLMS.Models;
+using System.Text;
+using System.Text.Json;
+using Microsoft.AspNetCore.Hosting;
+using System.IO;
+using System;
 
 public class ContractsController : Controller
 {
-    private readonly TechMoveDBContext _context;
-    private readonly IWebHostEnvironment _env;
+    private readonly HttpClient _httpClient;
+    private readonly IWebHostEnvironment? _env;
 
-    public ContractsController(TechMoveDBContext context, IWebHostEnvironment env)
+    public ContractsController(IHttpClientFactory httpClientFactory, IWebHostEnvironment? env = null)
     {
-        _context = context;
+        _httpClient = httpClientFactory.CreateClient();
+        _httpClient.BaseAddress = new Uri("https://localhost:7066");
         _env = env;
     }
 
-    // GET: Contracts and Search Feature
-public async Task<IActionResult> Index(string? status, string? serviceLevel, DateTime? startDate, DateTime? endDate)
-{
-    var query = _context.Contracts.Include(c => c.Client).AsQueryable();
-
-    if (!string.IsNullOrEmpty(status))
-        query = query.Where(c => c.ContractStatus == status);
-
-    if (!string.IsNullOrEmpty(serviceLevel))
-        query = query.Where(c => c.ContractServiceLevel == serviceLevel);
-
-    if (startDate.HasValue && endDate.HasValue)
-        query = query.Where(c => c.StartDate >= startDate && c.EndDate <= endDate);
-
-    ViewData["status"] = status;
-    ViewData["serviceLevel"] = serviceLevel;
-    ViewData["startDate"] = startDate?.ToString("yyyy-MM-dd");
-    ViewData["endDate"] = endDate?.ToString("yyyy-MM-dd");
-
-    return View(await query.ToListAsync());
-}
-
-
-
-    // GET: Contracts/Details/5
-    public async Task<IActionResult> Details(int? contractid)
+    public async Task<IActionResult> Index(string? status, string? serviceLevel, DateTime? startDate, DateTime? endDate)
     {
-        if (contractid == null) return NotFound();
+        var query = new List<string>();
+        if (!string.IsNullOrEmpty(status)) query.Add($"status={status}");
+        if (!string.IsNullOrEmpty(serviceLevel)) query.Add($"serviceLevel={serviceLevel}");
+        if (startDate.HasValue) query.Add($"startDate={startDate.Value:O}");
+        if (endDate.HasValue) query.Add($"endDate={endDate.Value:O}");
 
-        var contract = await _context.Contracts
-            .Include(c => c.Client)
-            .FirstOrDefaultAsync(m => m.ContractId == contractid);
+        var url = "/api/contracts" + (query.Count > 0 ? "?" + string.Join("&", query) : "");
 
-        if (contract == null) return NotFound();
+        var response = await _httpClient.GetAsync(url);
+        if (!response.IsSuccessStatusCode) return View(new List<Contract>());
+
+        var json = await response.Content.ReadAsStringAsync();
+        var contracts = JsonSerializer.Deserialize<List<Contract>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        return View(contracts);
+    }
+
+    public async Task<IActionResult> Details(int id)
+    {
+        var response = await _httpClient.GetAsync($"/api/contracts/{id}");
+        if (!response.IsSuccessStatusCode) return NotFound();
+
+        var json = await response.Content.ReadAsStringAsync();
+        var contract = JsonSerializer.Deserialize<Contract>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         return View(contract);
     }
 
-    // GET: Contracts/Create
-    public IActionResult Create()
+    public async Task<IActionResult> Create()
     {
-        ViewData["ClientId"] = new SelectList(_context.Clients, "ClientId", "ClientName");
-        ViewData["StatusList"] = new SelectList(new[] { "Draft", "On Hold", "Active", "Expired" });
-        ViewData["ServiceLevelList"] = new SelectList(new[] { "High", "Medium", "Low" });
+        // Populate clients for the client dropdown when creating a contract
+        var response = await _httpClient.GetAsync("/api/clients");
+        var json = await response.Content.ReadAsStringAsync();
+        var clients = JsonSerializer.Deserialize<List<ST10398576_TechMoveGLMS.Models.Client>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ST10398576_TechMoveGLMS.Models.Client>();
+
+        ViewBag.ClientId = new SelectList(clients, "ClientId", "ClientName");
         return View();
     }
 
-    // POST: Contracts/Create
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("ContractId,ClientId,StartDate,EndDate,ContractStatus,ContractServiceLevel")] Contract contract, IFormFile file)
+    public async Task<IActionResult> Create(Contract contract, IFormFile? AgreementPdf = null)
     {
         if (ModelState.IsValid)
         {
-            if (file != null && file.ContentType == "application/pdf")
+            if (AgreementPdf != null && AgreementPdf.Length > 0)
             {
-                var uploads = Path.Combine(_env.WebRootPath, "pdfs");
-                Directory.CreateDirectory(uploads);
-                var filePath = Path.Combine(uploads, Guid.NewGuid().ToString() + Path.GetExtension(file.FileName));
-
-                using (var stream = new FileStream(filePath, FileMode.Create))
+                var originalFileName = Path.GetFileName(AgreementPdf.FileName);
+                var ext = Path.GetExtension(originalFileName);
+                if (!string.Equals(ext, ".pdf", StringComparison.OrdinalIgnoreCase))
                 {
-                    await file.CopyToAsync(stream);
-                }
-
-                contract.PdfFilePath = "/pdfs/" + Path.GetFileName(filePath);
-            }
-
-            _context.Add(contract);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
-
-        ViewData["ClientId"] = new SelectList(_context.Clients, "ClientId", "ClientName", contract.ClientId);
-        ViewData["StatusList"] = new SelectList(new[] { "Draft", "On Hold", "Active", "Expired" }, contract.ContractStatus);
-        ViewData["ServiceLevelList"] = new SelectList(new[] { "High", "Medium", "Low" }, contract.ContractServiceLevel);
-        return View(contract);
-    }
-
-    // GET: Contracts/Edit/5
-    public async Task<IActionResult> Edit(int? contractid)
-    {
-        if (contractid == null) return NotFound();
-
-        var contract = await _context.Contracts.FindAsync(contractid);
-        if (contract == null) return NotFound();
-
-        ViewData["ClientId"] = new SelectList(_context.Clients, "ClientId", "ClientName", contract.ClientId);
-        ViewData["StatusList"] = new SelectList(new[] { "Draft","On Hold", "Active", "Expired" }, contract.ContractStatus);
-        ViewData["ServiceLevelList"] = new SelectList(new[] { "High", "Medium", "Low" }, contract.ContractServiceLevel);
-        return View(contract);
-    }
-
-    // POST: Contracts/Edit/5
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int contractid, [Bind("ContractId,ClientId,StartDate,EndDate,ContractStatus,ContractServiceLevel,PdfFilePath")] Contract contract, IFormFile? file)
-    {
-        if (contractid != contract.ContractId) return NotFound();
-
-        if (ModelState.IsValid)
-        {
-            try
-            {
-                // Only replace PDF if a new one is uploaded
-                if (file != null && file.ContentType == "application/pdf")
-                {
-                    var uploads = Path.Combine(_env.WebRootPath, "pdfs");
-                    Directory.CreateDirectory(uploads);
-                    var filePath = Path.Combine(uploads, Guid.NewGuid().ToString() + Path.GetExtension(file.FileName));
-
-                    using (var stream = new FileStream(filePath, FileMode.Create))
-                    {
-                        await file.CopyToAsync(stream);
-                    }
-
-                    contract.PdfFilePath = "/pdfs/" + Path.GetFileName(filePath);
+                    ModelState.AddModelError("AgreementPdf", "Only PDF files are allowed.");
                 }
                 else
                 {
-                    // Preserve existing PDF path if no new file uploaded
-                    _context.Entry(contract).Property(c => c.PdfFilePath).IsModified = false;
+                    var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                    var uploadsDir = Path.Combine(webRoot, "uploads", "contracts");
+                    Directory.CreateDirectory(uploadsDir);
+                    var safeFileName = Guid.NewGuid().ToString("N") + ext;
+                    var filePath = Path.Combine(uploadsDir, safeFileName);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await AgreementPdf.CopyToAsync(stream);
+                    }
+                    contract.PdfFilePath = "/uploads/contracts/" + safeFileName;
                 }
+            }
 
-                _context.Update(contract);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ContractExists(contract.ContractId)) return NotFound();
-                else throw;
-            }
-            return RedirectToAction(nameof(Index));
+            var json = JsonSerializer.Serialize(contract);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync("/api/contracts", content);
+
+            if (response.IsSuccessStatusCode)
+                return RedirectToAction(nameof(Index));
         }
-
-        ViewData["ClientId"] = new SelectList(_context.Clients, "ClientId", "ClientName", contract.ClientId);
-        ViewData["StatusList"] = new SelectList(new[] { "Draft", "On Hold", "Active", "Expired" }, contract.ContractStatus);
-        ViewData["ServiceLevelList"] = new SelectList(new[] { "High", "Medium", "Low" }, contract.ContractServiceLevel);
+        // If we got this far something failed; re-populate the clients dropdown and return view
+        var resp = await _httpClient.GetAsync("/api/clients");
+        var json2 = await resp.Content.ReadAsStringAsync();
+        var clients2 = JsonSerializer.Deserialize<List<ST10398576_TechMoveGLMS.Models.Client>>(json2, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ST10398576_TechMoveGLMS.Models.Client>();
+        ViewBag.ClientId = new SelectList(clients2, "ClientId", "ClientName", contract.ClientId);
         return View(contract);
     }
 
-    // GET: Contracts/Delete/5
-    public async Task<IActionResult> Delete(int? contractid)
+
+    public async Task<IActionResult> Edit(int id)
     {
-        if (contractid == null) return NotFound();
+        var response = await _httpClient.GetAsync($"/api/contracts/{id}");
+        if (!response.IsSuccessStatusCode) return NotFound();
 
-        var contract = await _context.Contracts
-            .Include(c => c.Client)
-            .FirstOrDefaultAsync(m => m.ContractId == contractid);
+        var json = await response.Content.ReadAsStringAsync();
+        var contract = JsonSerializer.Deserialize<Contract>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-        if (contract == null) return NotFound();
+        // populate clients for client dropdown
+        var clientsResp = await _httpClient.GetAsync("/api/clients");
+        var clientsJson = await clientsResp.Content.ReadAsStringAsync();
+        var clients = JsonSerializer.Deserialize<List<ST10398576_TechMoveGLMS.Models.Client>>(clientsJson, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ST10398576_TechMoveGLMS.Models.Client>();
+        ViewBag.ClientId = new SelectList(clients, "ClientId", "ClientName", contract?.ClientId);
+
+        // status and service level lists
+        ViewBag.StatusList = new SelectList(new[] { "Active", "Completed", "On Hold", "Expired" }, contract?.ContractStatus);
+        ViewBag.ServiceLevelList = new SelectList(new[] { "High", "Medium", "Low" }, contract?.ContractServiceLevel);
 
         return View(contract);
     }
 
-    // POST: Contracts/Delete/5
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, Contract contract, IFormFile? AgreementPdf = null)
+    {
+        if (id != contract.ContractId) return NotFound();
+
+        if (ModelState.IsValid)
+        {
+            if (AgreementPdf != null && AgreementPdf.Length > 0)
+            {
+                var originalFileName = Path.GetFileName(AgreementPdf.FileName);
+                var ext = Path.GetExtension(originalFileName);
+                if (!string.Equals(ext, ".pdf", StringComparison.OrdinalIgnoreCase))
+                {
+                    ModelState.AddModelError("AgreementPdf", "Only PDF files are allowed.");
+                }
+                else
+                {
+                    var webRoot = _env.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                    var uploadsDir = Path.Combine(webRoot, "uploads", "contracts");
+                    Directory.CreateDirectory(uploadsDir);
+                    var safeFileName = Guid.NewGuid().ToString("N") + ext;
+                    var filePath = Path.Combine(uploadsDir, safeFileName);
+                    using (var stream = new FileStream(filePath, FileMode.Create))
+                    {
+                        await AgreementPdf.CopyToAsync(stream);
+                    }
+                    contract.PdfFilePath = "/uploads/contracts/" + safeFileName;
+                }
+            }
+
+            if (ModelState.IsValid)
+            {
+                var json = JsonSerializer.Serialize(contract);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                var response = await _httpClient.PutAsync($"/api/contracts/{id}", content);
+                if (response.IsSuccessStatusCode)
+                    return RedirectToAction(nameof(Index));
+            }
+        }
+        // repopulate dropdowns on error
+        var resp = await _httpClient.GetAsync("/api/clients");
+        var json2 = await resp.Content.ReadAsStringAsync();
+        var clients2 = JsonSerializer.Deserialize<List<ST10398576_TechMoveGLMS.Models.Client>>(json2, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ST10398576_TechMoveGLMS.Models.Client>();
+        ViewBag.ClientId = new SelectList(clients2, "ClientId", "ClientName", contract.ClientId);
+        ViewBag.StatusList = new SelectList(new[] { "Active", "Completed", "On Hold", "Expired" }, contract.ContractStatus);
+        ViewBag.ServiceLevelList = new SelectList(new[] { "High", "Medium", "Low" }, contract.ContractServiceLevel);
+        return View(contract);
+    }
+
+    public async Task<IActionResult> Delete(int id)
+    {
+        var response = await _httpClient.GetAsync($"/api/contracts/{id}");
+        if (!response.IsSuccessStatusCode) return NotFound();
+
+        var json = await response.Content.ReadAsStringAsync();
+        var contract = JsonSerializer.Deserialize<Contract>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        return View(contract);
+    }
+
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(int? contractid)
+    public async Task<IActionResult> DeleteConfirmed(int id)
     {
-        var contract = await _context.Contracts.FindAsync(contractid);
-        if (contract != null) _context.Contracts.Remove(contract);
+        var response = await _httpClient.DeleteAsync($"/api/contracts/{id}");
+        if (response.IsSuccessStatusCode)
+            return RedirectToAction(nameof(Index));
 
-        await _context.SaveChangesAsync();
-        return RedirectToAction(nameof(Index));
-    }
-
-    private bool ContractExists(int? contractid)
-    {
-        return _context.Contracts.Any(e => e.ContractId == contractid);
+        return NotFound();
     }
 }

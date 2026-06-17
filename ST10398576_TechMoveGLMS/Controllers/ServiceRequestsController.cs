@@ -1,201 +1,169 @@
-
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
-using Microsoft.EntityFrameworkCore;
-using ST10398576_TechMoveGLMS.DBContext;
 using ST10398576_TechMoveGLMS.Models;
 using System.Text.Json;
+using System.Text;
 
 public class ServiceRequestsController : Controller
 {
-    private readonly TechMoveDBContext _context;
+    private readonly HttpClient _httpClient;
 
-    public ServiceRequestsController(TechMoveDBContext context)
+    public ServiceRequestsController(IHttpClientFactory httpClientFactory)
     {
-        _context = context;
+        _httpClient = httpClientFactory.CreateClient();
+        _httpClient.BaseAddress = new Uri("https://localhost:7066"); // API base URL
     }
 
-    // GET: SERVICEREQUESTS and Search Feature
+    // GET: ServiceRequests
     public async Task<IActionResult> Index(string? status, DateTime? startDate, DateTime? endDate)
     {
-        var query = _context.ServiceRequests.Include(sr => sr.Contract).AsQueryable();
+        var query = new List<string>();
+        if (!string.IsNullOrEmpty(status)) query.Add($"status={status}");
+        if (startDate.HasValue) query.Add($"startDate={startDate.Value:O}");
+        if (endDate.HasValue) query.Add($"endDate={endDate.Value:O}");
 
-        if (!string.IsNullOrEmpty(status))
-            query = query.Where(sr => sr.ServiceStatus == status);
+        var url = "/api/servicerequests" + (query.Count > 0 ? "?" + string.Join("&", query) : "");
 
-        if (startDate.HasValue && endDate.HasValue)
-            query = query.Where(sr => sr.Contract.StartDate >= startDate && sr.Contract.EndDate <= endDate);
+        var response = await _httpClient.GetAsync(url);
+        if (!response.IsSuccessStatusCode) return View(new List<ServiceRequest>());
 
-        ViewData["status"] = status;
-        ViewData["startDate"] = startDate?.ToString("yyyy-MM-dd");
-        ViewData["endDate"] = endDate?.ToString("yyyy-MM-dd");
+        var json = await response.Content.ReadAsStringAsync();
+        var requests = JsonSerializer.Deserialize<List<ServiceRequest>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-        return View(await query.ToListAsync());
+        return View(requests);
     }
 
-    // GET: SERVICEREQUESTS/Details/5
-    public async Task<IActionResult> Details(int? servicerequestid)
+
+    // GET: ServiceRequests/Details/5
+    public async Task<IActionResult> Details(int id)
     {
-        if (servicerequestid == null)
-        {
-            return NotFound();
-        }
+        var response = await _httpClient.GetAsync($"/api/servicerequests/{id}");
+        if (!response.IsSuccessStatusCode) return NotFound();
 
-        var servicerequest = await _context.ServiceRequests
-            .FirstOrDefaultAsync(m => m.ServiceRequestId == servicerequestid);
-        if (servicerequest == null)
-        {
-            return NotFound();
-        }
+        var json = await response.Content.ReadAsStringAsync();
+        var request = JsonSerializer.Deserialize<ServiceRequest>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
-        return View(servicerequest);
+        return View(request);
     }
 
-    // GET: SERVICEREQUESTS/Create
-    public IActionResult Create()
+    // GET: ServiceRequests/Create
+    public async Task<IActionResult> Create()
     {
-        // Show ContractId dropdown with ContractStatus or ClientName as display text
-        ViewData["ContractId"] = new SelectList(_context.Contracts.Include(c => c.Client), "ContractId", "Client.ClientName");
-        ViewData["StatusList"] = new SelectList(new[] { "Pending", "In Progress", "Completed", "Cancelled", "On Hold" });
+        // Populate contracts for the ContractId dropdown. Include client name if available for clarity.
+        var response = await _httpClient.GetAsync("/api/contracts");
+        if (!response.IsSuccessStatusCode)
+        {
+            ViewBag.Contracts = new List<SelectListItem>();
+            return View();
+        }
+
+        var json = await response.Content.ReadAsStringAsync();
+        var contracts = JsonSerializer.Deserialize<List<ST10398576_TechMoveGLMS.Models.Contract>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ST10398576_TechMoveGLMS.Models.Contract>();
+
+        var items = contracts.Select(c => new SelectListItem
+        {
+            Value = c.ContractId.ToString(),
+            Text = c.Client != null ? $"{c.ContractId} - {c.Client.ClientName}" : c.ContractId.ToString()
+        }).ToList();
+
+        ViewBag.Contracts = items;
         return View();
     }
 
-    // POST: SERVICEREQUESTS/Create
-    // To protect from overposting attacks, enable the specific properties you want to bind to.
-    // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
+    // POST: ServiceRequests/Create
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("ServiceRequestId,ContractId,ServiceDescription,ServiceCost,ServiceStatus")] ServiceRequest servicerequest)
+    public async Task<IActionResult> Create(ServiceRequest request)
     {
-        var contract = await _context.Contracts.FindAsync(servicerequest.ContractId);
-        if (contract == null)
+        if (ModelState.IsValid)
         {
-            ModelState.AddModelError("", "Contract not found.");
-            return View(servicerequest);
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync("/api/servicerequests", content);
+            if (response.IsSuccessStatusCode)
+                return RedirectToAction(nameof(Index));
+        }
+        // repopulate contract dropdown on error
+        var resp = await _httpClient.GetAsync("/api/contracts");
+        var json2 = await resp.Content.ReadAsStringAsync();
+        var contracts2 = JsonSerializer.Deserialize<List<ST10398576_TechMoveGLMS.Models.Contract>>(json2, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ST10398576_TechMoveGLMS.Models.Contract>();
+        ViewBag.Contracts = contracts2.Select(c => new SelectListItem { Value = c.ContractId.ToString(), Text = c.Client != null ? $"{c.ContractId} - {c.Client.ClientName}" : c.ContractId.ToString() }).ToList();
+        return View(request);
+    }
+
+    // GET: ServiceRequests/Edit/5
+    public async Task<IActionResult> Edit(int id)
+    {
+        var response = await _httpClient.GetAsync($"/api/servicerequests/{id}");
+        if (!response.IsSuccessStatusCode) return NotFound();
+
+        var json = await response.Content.ReadAsStringAsync();
+        var request = JsonSerializer.Deserialize<ServiceRequest>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        // populate contracts dropdown (include client name when available)
+        var resp = await _httpClient.GetAsync("/api/contracts");
+        if (resp.IsSuccessStatusCode)
+        {
+            var json2 = await resp.Content.ReadAsStringAsync();
+            var contracts = JsonSerializer.Deserialize<List<ST10398576_TechMoveGLMS.Models.Contract>>(json2, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ST10398576_TechMoveGLMS.Models.Contract>();
+            ViewBag.ContractId = contracts.Select(c => new SelectListItem { Value = c.ContractId.ToString(), Text = c.Client != null ? $"{c.ContractId} - {c.Client.ClientName}" : c.ContractId.ToString() }).ToList();
         }
 
-        if (contract.ContractStatus == "Expired" || contract.ContractStatus == "On Hold")
-        {
-            ModelState.AddModelError("", "Cannot create a request for Expired or On Hold contracts.");
-            return View(servicerequest);
-        }
+        // status list
+        ViewBag.StatusList = new SelectList(new[] { "Pending", "Completed" }, request?.ServiceStatus);
+        return View(request);
+    }
 
-        // Currency conversion: example for USD → ZAR
-        servicerequest.ServiceCost = await ConvertUsdToZar(servicerequest.ServiceCost);
+    // POST: ServiceRequests/Edit/5
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(int id, ServiceRequest request)
+    {
+        if (id != request.ServiceRequestId) return NotFound();
 
         if (ModelState.IsValid)
         {
-            _context.Add(servicerequest);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
-        }
+            var json = JsonSerializer.Serialize(request);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-        ViewData["ContractId"] = new SelectList(_context.Contracts.Include(c => c.Client), "ContractId", "Client.ClientName", servicerequest.ContractId);
-        ViewData["StatusList"] = new SelectList(new[] { "Pending", "In Progress", "Completed", "Cancelled", "On Hold" }, servicerequest.ServiceStatus);
-        return View(servicerequest);
+            var response = await _httpClient.PutAsync($"/api/servicerequests/{id}", content);
+            if (response.IsSuccessStatusCode)
+                return RedirectToAction(nameof(Index));
+        }
+        // repopulate contract dropdown and status list on error
+        var resp2 = await _httpClient.GetAsync("/api/contracts");
+        if (resp2.IsSuccessStatusCode)
+        {
+            var json3 = await resp2.Content.ReadAsStringAsync();
+            var contracts2 = JsonSerializer.Deserialize<List<ST10398576_TechMoveGLMS.Models.Contract>>(json3, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<ST10398576_TechMoveGLMS.Models.Contract>();
+            ViewBag.ContractId = contracts2.Select(c => new SelectListItem { Value = c.ContractId.ToString(), Text = c.Client != null ? $"{c.ContractId} - {c.Client.ClientName}" : c.ContractId.ToString() }).ToList();
+        }
+        ViewBag.StatusList = new SelectList(new[] { "Pending", "Completed" }, request.ServiceStatus);
+        return View(request);
     }
 
-    private async Task<decimal> ConvertUsdToZar(decimal amount)
+    // GET: ServiceRequests/Delete/5
+    public async Task<IActionResult> Delete(int id)
     {
-        using var client = new HttpClient();
-        var response = await client.GetStringAsync("https://api.exchangerate-api.com/v4/latest/USD");
-        var data = JsonDocument.Parse(response);
-        var rate = data.RootElement.GetProperty("rates").GetProperty("ZAR").GetDecimal();
-        return amount * rate;
+        var response = await _httpClient.GetAsync($"/api/servicerequests/{id}");
+        if (!response.IsSuccessStatusCode) return NotFound();
+
+        var json = await response.Content.ReadAsStringAsync();
+        var request = JsonSerializer.Deserialize<ServiceRequest>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        return View(request);
     }
 
-    // GET: SERVICEREQUESTS/Edit/5
-    public async Task<IActionResult> Edit(int? servicerequestid)
-    {
-        if (servicerequestid == null)
-        {
-            return NotFound();
-        }
-
-        var servicerequest = await _context.ServiceRequests.FindAsync(servicerequestid);
-        if (servicerequest == null)
-        {
-            return NotFound();
-        }
-
-        ViewData["ContractId"] = new SelectList(_context.Contracts.Include(c => c.Client), "ContractId", "Client.ClientName", servicerequest.ContractId);
-        ViewData["StatusList"] = new SelectList(new[] { "Pending", "In Progress", "Completed", "Cancelled", "On Hold" }, servicerequest.ServiceStatus);
-        return View(servicerequest);
-    }
-
-    // POST: SERVICEREQUESTS/Edit/5
-    // To protect from overposting attacks, enable the specific properties you want to bind to.
-    // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int? servicerequestid, [Bind("ServiceRequestId,ContractId,ServiceContract,ServiceDescription,ServiceCost,ServiceStatus")] ServiceRequest servicerequest)
-    {
-        if (servicerequestid != servicerequest.ServiceRequestId)
-        {
-            return NotFound();
-        }
-
-        if (ModelState.IsValid)
-        {
-            try
-            {
-                _context.Update(servicerequest);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ServiceRequestExists(servicerequest.ServiceRequestId))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            return RedirectToAction(nameof(Index));
-        }
-
-        ViewData["ContractId"] = new SelectList(_context.Contracts.Include(c => c.Client), "ContractId", "Client.ClientName", servicerequest.ContractId);
-        ViewData["StatusList"] = new SelectList(new[] { "Pending", "In Progress", "Completed", "Cancelled", "On Hold" }, servicerequest.ServiceStatus);
-        return View(servicerequest);
-    }
-
-    // GET: SERVICEREQUESTS/Delete/5
-    public async Task<IActionResult> Delete(int? servicerequestid)
-    {
-        if (servicerequestid == null)
-        {
-            return NotFound();
-        }
-
-        var servicerequest = await _context.ServiceRequests
-            .FirstOrDefaultAsync(m => m.ServiceRequestId == servicerequestid);
-        if (servicerequest == null)
-        {
-            return NotFound();
-        }
-
-        return View(servicerequest);
-    }
-
-    // POST: SERVICEREQUESTS/Delete/5
+    // POST: ServiceRequests/Delete/5
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(int? servicerequestid)
+    public async Task<IActionResult> DeleteConfirmed(int id)
     {
-        var servicerequest = await _context.ServiceRequests.FindAsync(servicerequestid);
-        if (servicerequest != null)
-        {
-            _context.ServiceRequests.Remove(servicerequest);
-        }
+        var response = await _httpClient.DeleteAsync($"/api/servicerequests/{id}");
+        if (response.IsSuccessStatusCode)
+            return RedirectToAction(nameof(Index));
 
-        await _context.SaveChangesAsync();
-        return RedirectToAction(nameof(Index));
-    }
-
-    private bool ServiceRequestExists(int? servicerequestid)
-    {
-        return _context.ServiceRequests.Any(e => e.ServiceRequestId == servicerequestid);
+        return NotFound();
     }
 }

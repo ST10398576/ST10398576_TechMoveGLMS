@@ -10,6 +10,7 @@
 
 <form asp-action="Edit" method="post" enctype="multipart/form-data">
     <input type="hidden" asp-for="ContractId" />
+    <input type="hidden" asp-for="PdfFilePath" />
 
     <div class="form-group">
         <label asp-for="ClientId" class="control-label"> Client Name </label>
@@ -33,6 +34,7 @@
         <label asp-for="ContractStatus" class="control-label"> Status </label>
         <select asp-for="ContractStatus" class="form-control" asp-items="ViewBag.StatusList"></select>
         <span asp-validation-for="ContractStatus" class="text-danger"></span>
+    </div>
 
     <div class="form-group">
         <label asp-for="ContractServiceLevel" class="control-label"> Service Level </label>
@@ -40,13 +42,15 @@
         <span asp-validation-for="ContractServiceLevel" class="text-danger"></span>
     </div>
 
-    <div class="form-group">
-        <label>Replace Agreement (PDF)</label>
-        <input type="file" name="file" class="form-control" />
-        <small class="form-text text-muted">
-            Leave blank to keep the existing file.
-        </small>
-    </div>
+        <div class="form-group">
+            <label>Signed Agreement (PDF)</label>
+            <input type="file" name="AgreementPdf" class="form-control" accept=".pdf" />
+            <small class="text-muted">Leave empty to keep existing PDF</small>
+            @if (!string.IsNullOrEmpty(Model.PdfFilePath))
+            {
+                <p>Current file: <a href="@Url.Content(Model.PdfFilePath)" target="_blank">Download</a></p>
+            }
+        </div>
 
     <button type="submit" class="btn btn-primary">Save</button>
     <a asp-action="Index" class="btn btn-secondary">Back to List</a>

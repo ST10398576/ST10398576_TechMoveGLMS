@@ -1,30 +1,44 @@
 ﻿using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
+using Moq;
+using Moq.Protected;
 using ST10398576_TechMoveGLMS.Controllers;
-using ST10398576_TechMoveGLMS.DBContext;
 using ST10398576_TechMoveGLMS.Models;
+using System.Net;
+using System.Net.Http;
+using System.Text;
+using System.Text.Json;
 using Xunit;
-using System.Collections.Generic;
-using System.Threading.Tasks;
 
 public class ClientsControllerTests
 {
-    private TechMoveDBContext GetContext()
+    private HttpClient CreateMockHttpClient(object responseObject)
     {
-        var options = new DbContextOptionsBuilder<TechMoveDBContext>()
-            .UseInMemoryDatabase(databaseName: "ClientsTestDB")
-            .Options;
-        return new TechMoveDBContext(options);
+        var handlerMock = new Mock<HttpMessageHandler>();
+        handlerMock.Protected()
+            .Setup<Task<HttpResponseMessage>>("SendAsync",
+                ItExpr.IsAny<HttpRequestMessage>(),
+                ItExpr.IsAny<CancellationToken>())
+            .ReturnsAsync(new HttpResponseMessage
+            {
+                StatusCode = HttpStatusCode.OK,
+                Content = new StringContent(JsonSerializer.Serialize(responseObject), Encoding.UTF8, "application/json")
+            });
+
+        return new HttpClient(handlerMock.Object)
+        {
+            BaseAddress = new Uri("https://localhost:5001")
+        };
     }
 
     [Fact]
     public async Task Index_ReturnsClients()
     {
-        var context = GetContext();
-        context.Clients.Add(new Client { ClientName = "Test", ClientContactDetails = "123", ClientRegion = "Cape Town" });
-        await context.SaveChangesAsync();
+        var mockClient = CreateMockHttpClient(new List<Client>
+        {
+            new Client { ClientId = 1, ClientName = "Test", ClientContactDetails = "123", ClientRegion = "Cape Town" }
+        });
 
-        var controller = new ClientsController(context);
+        var controller = new ClientsController(new HttpClientFactoryMock(mockClient));
 
         var result = await controller.Index() as ViewResult;
         var model = Assert.IsAssignableFrom<IEnumerable<Client>>(result.Model);
@@ -33,56 +47,56 @@ public class ClientsControllerTests
     }
 
     [Fact]
-    public async Task Create_AddsClient()
+    public async Task Details_ReturnsClient()
     {
-        var context = new TechMoveDBContext(
-            new DbContextOptionsBuilder<TechMoveDBContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options);
+        var mockClient = CreateMockHttpClient(new Client { ClientId = 1, ClientName = "Test" });
+        var controller = new ClientsController(new HttpClientFactoryMock(mockClient));
 
-        var controller = new ClientsController(context);
+        var result = await controller.Details(1) as ViewResult;
+        var model = Assert.IsAssignableFrom<Client>(result.Model);
 
-        var client = new Client { ClientName = "New", ClientContactDetails = "456", ClientRegion = "Johannesburg" };
-        var result = await controller.Create(client);
-
-        Assert.IsType<RedirectToActionResult>(result);
-        Assert.Single(await context.Clients.ToListAsync()); // expect exactly 1
+        Assert.Equal("Test", model.ClientName);
     }
 
     [Fact]
     public async Task Edit_UpdatesClient()
     {
-        var context = GetContext();
-        var client = new Client { ClientName = "Old", ClientContactDetails = "789", ClientRegion = "Durban" };
-        context.Clients.Add(client);
-        await context.SaveChangesAsync();
+        var mockClient = CreateMockHttpClient(new Client { ClientId = 1, ClientName = "Updated" });
+        var controller = new ClientsController(new HttpClientFactoryMock(mockClient));
 
-        var controller = new ClientsController(context);
-        client.ClientName = "Updated";
-
-        var result = await controller.Edit(client.ClientId, client);
+        var client = new Client { ClientId = 1, ClientName = "Updated" };
+        var result = await controller.Edit(1, client);
 
         Assert.IsType<RedirectToActionResult>(result);
-        var updated = await context.Clients.FindAsync(client.ClientId);
-        Assert.Equal("Updated", updated.ClientName);
     }
 
     [Fact]
-    public async Task Delete_RemovesClient()
+    public async Task Delete_ReturnsClientForConfirmation()
     {
-        var context = new TechMoveDBContext(
-            new DbContextOptionsBuilder<TechMoveDBContext>()
-                .UseInMemoryDatabase(Guid.NewGuid().ToString())
-                .Options);
+        var mockClient = CreateMockHttpClient(new Client { ClientId = 1, ClientName = "ToDelete" });
+        var controller = new ClientsController(new HttpClientFactoryMock(mockClient));
 
-        var client = new Client { ClientName = "DeleteMe", ClientContactDetails = "000", ClientRegion = "Pretoria" };
-        context.Clients.Add(client);
-        await context.SaveChangesAsync();
+        var result = await controller.Delete(1) as ViewResult;
+        var model = Assert.IsAssignableFrom<Client>(result.Model);
 
-        var controller = new ClientsController(context);
-        var result = await controller.DeleteConfirmed(client.ClientId);
-
-        Assert.IsType<RedirectToActionResult>(result);
-        Assert.Empty(await context.Clients.ToListAsync()); // expect 0
+        Assert.Equal("ToDelete", model.ClientName);
     }
+
+    [Fact]
+    public async Task DeleteConfirmed_RemovesClient()
+    {
+        var mockClient = CreateMockHttpClient(new { });
+        var controller = new ClientsController(new HttpClientFactoryMock(mockClient));
+
+        var result = await controller.DeleteConfirmed(1);
+        Assert.IsType<RedirectToActionResult>(result);
+    }
+}
+
+// Helper to simulate IHttpClientFactory
+public class HttpClientFactoryMock : IHttpClientFactory
+{
+    private readonly HttpClient _client;
+    public HttpClientFactoryMock(HttpClient client) => _client = client;
+    public HttpClient CreateClient(string name = "") => _client;
 }

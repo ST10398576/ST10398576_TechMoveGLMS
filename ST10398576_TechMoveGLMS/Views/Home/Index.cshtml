@@ -1,35 +1,43 @@
-﻿@{
+﻿@model ST10398576_TechMoveGLMS.Models.DashboardSummary
+@{
     ViewData["Title"] = "Dashboard";
 }
 
 <h2>TechMove Dashboard</h2>
 
 <div class="row">
+    <!-- Clients Card -->
     <div class="col-md-4">
         <div class="card bg-light mb-3">
             <div class="card-header">Clients</div>
             <div class="card-body">
-                <h4>@Model.ClientCount</h4>
+                <h4>Total: @Model.TotalClients</h4>
                 <a asp-controller="Clients" asp-action="Index" class="btn btn-primary">View Clients</a>
             </div>
         </div>
     </div>
 
+    <!-- Contracts Card -->
     <div class="col-md-4">
         <div class="card bg-light mb-3">
             <div class="card-header">Contracts</div>
             <div class="card-body">
-                <h4>@Model.ContractCount</h4>
+                <h4>Total: @Model.TotalContracts</h4>
+                <p>Active: <span class="badge bg-success">@Model.ActiveContracts</span></p>
+                <p>Expired: <span class="badge bg-danger">@Model.ExpiredContracts</span></p>
                 <a asp-controller="Contracts" asp-action="Index" class="btn btn-primary">View Contracts</a>
             </div>
         </div>
     </div>
 
+    <!-- Service Requests Card -->
     <div class="col-md-4">
         <div class="card bg-light mb-3">
             <div class="card-header">Service Requests</div>
             <div class="card-body">
-                <h4>@Model.ServiceRequestCount</h4>
+                <h4>Total: @Model.TotalServiceRequests</h4>
+                <p>Pending: <span class="badge bg-warning">@Model.PendingRequests</span></p>
+                <p>Completed: <span class="badge bg-success">@Model.CompletedRequests</span></p>
                 <a asp-controller="ServiceRequests" asp-action="Index" class="btn btn-primary">View Requests</a>
             </div>
         </div>

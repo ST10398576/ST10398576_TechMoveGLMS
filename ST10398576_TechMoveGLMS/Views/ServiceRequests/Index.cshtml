@@ -1,57 +1,67 @@
 @model IEnumerable<ST10398576_TechMoveGLMS.Models.ServiceRequest>
-
 @{
     ViewData["Title"] = "Service Requests";
+    var selectedStartDate = Context.Request.Query["startDate"].ToString();
+    var selectedEndDate = Context.Request.Query["endDate"].ToString();
 }
 
 <h2>Service Requests</h2>
-<p>
-    <a asp-action="Create" class="btn btn-success">Create New</a>
-</p>
 
-<!-- Search/Filter Form 
-<h2> Search Filter </h2>
-<form method="get" class="mb-3">
-    <select name="status" class="form-control mb-2">
-        <option value=""> --All Statuses-- </option>
-        <option value="Pending" selected="@(ViewData["status"]?.ToString() == "Pending")">Pending</option>
-        <option value="In Progress" selected="@(ViewData["status"]?.ToString() == "In Progress")">In Progress</option>
-        <option value="Completed" selected="@(ViewData["status"]?.ToString() == "Completed")">Completed</option>
-        <option value="Cancelled" selected="@(ViewData["status"]?.ToString() == "Cancelled")">Cancelled</option>
-        <option value="On Hold" selected="@(ViewData["status"]?.ToString() == "On Hold")">On Hold</option>
-    </select>
-
-    <label>Date Range</label>
-    <input type="date" name="startDate" value="@ViewData["startDate"]" class="form-control mb-2" />
-    <input type="date" name="endDate" value="@ViewData["endDate"]" class="form-control mb-2" />
-
-    <button type="submit" class="btn btn-primary">Filter</button>
+<!-- Filter Form -->
+<form asp-action="Index" method="get" class="mb-3">
+    <div class="row">
+        <div class="col-md-4">
+            <label>Status</label>
+            <select name="status" class="form-control">
+                <option value="">All</option>
+                <option value="Pending">Pending</option>
+                <option value="Completed">Completed</option>
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label>Start Date</label>
+            <input type="date" name="startDate" class="form-control" value="@selectedStartDate" />
+        </div>
+        <div class="col-md-4">
+            <label>End Date</label>
+            <input type="date" name="endDate" class="form-control" value="@selectedEndDate" />
+        </div>
+    </div>
+    <button type="submit" class="btn btn-primary mt-2">Filter</button>
+    <a asp-action="Index" class="btn btn-secondary mt-2">Clear Filters</a>
 </form>
--->
-<table class="table table-striped">
-    <thead>
+
+<!-- Results Table -->
+<table class="table table-bordered table-hover">
+    <thead class="table-dark">
         <tr>
-            <th>ContractId</th>
+            <th>Request ID</th>
             <th>Description</th>
-            <th>Cost (ZAR)</th>
+            <th>Cost</th>
             <th>Status</th>
+            <th>Contract ID</th>
+            <th>Client Name</th>
             <th></th>
         </tr>
     </thead>
     <tbody>
-        @foreach (var item in Model)
-        {
-            <tr>
-                <td>@item.ContractId</td>
-                <td>@item.ServiceDescription</td>
-                <td>R @item.ServiceCost</td>
-                <td>@item.ServiceStatus</td>
-                <td>
-                    <a asp-action="Edit" asp-route-servicerequestid="@item.ServiceRequestId">Edit</a> |
-                    <a asp-action="Details" asp-route-servicerequestid="@item.ServiceRequestId">Details</a> |
-                    <a asp-action="Delete" asp-route-servicerequestid="@item.ServiceRequestId">Delete</a>
-                </td>
-            </tr>
-        }
+    @foreach (var request in Model)
+    {
+        <tr>
+            <td>@request.ServiceRequestId</td>
+            <td>@request.ServiceDescription</td>
+            <td>R @request.ServiceCost</td>
+            <td>@request.ServiceStatus</td>
+            <td>@request.ContractId</td>
+            <td>@request.Contract?.Client?.ClientName</td>
+            <td>
+                <a asp-action="Details" asp-route-id="@request.ServiceRequestId" class="btn btn-info btn-sm">Details</a>
+                <a asp-action="Edit" asp-route-id="@request.ServiceRequestId" class="btn btn-warning btn-sm">Edit</a>
+                <a asp-action="Delete" asp-route-id="@request.ServiceRequestId" class="btn btn-danger btn-sm">Delete</a>
+            </td>
+        </tr>
+    }
     </tbody>
 </table>
+
+<a asp-action="Create" class="btn btn-success">Create New Request</a>

@@ -1,36 +1,30 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using ST10398576_TechMoveGLMS.DBContext;
 using ST10398576_TechMoveGLMS.Models;
-using System.Diagnostics;
+using System.Text.Json;
 
 namespace ST10398576_TechMoveGLMS.Controllers
 {
     public class HomeController : Controller
     {
-        private readonly TechMoveDBContext _context;
+        private readonly HttpClient _httpClient;
 
-        public HomeController(TechMoveDBContext context)
+        public HomeController(IHttpClientFactory httpClientFactory)
         {
-            _context = context;
+            _httpClient = httpClientFactory.CreateClient();
+            _httpClient.BaseAddress = new Uri("https://localhost:7066");
         }
 
-        public IActionResult Index()
+        public async Task<IActionResult> Index()
         {
-            var dashboard = new
+            var response = await _httpClient.GetAsync("/api/home/dashboard");
+            if (!response.IsSuccessStatusCode)
             {
-                ClientCount = _context.Clients.Count(),
-                ContractCount = _context.Contracts.Count(),
-                ServiceRequestCount = _context.ServiceRequests.Count(),
-                RecentContracts = _context.Contracts
-                    .OrderByDescending(c => c.StartDate)
-                    .Take(5)
-                    .ToList(),
-                RecentRequests = _context.ServiceRequests
-                    .OrderByDescending(s => s.ServiceRequestId)
-                    .Take(5)
-                    .ToList()
-            };
+                return View(new DashboardSummary()); // empty object instead of null
+            }
+
+            var json = await response.Content.ReadAsStringAsync();
+            var dashboard = JsonSerializer.Deserialize<DashboardSummary>(
+                json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
             return View(dashboard);
         }

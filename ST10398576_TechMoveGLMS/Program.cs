@@ -1,12 +1,8 @@
-using Microsoft.EntityFrameworkCore;
-using ST10398576_TechMoveGLMS.DBContext;
-
 var builder = WebApplication.CreateBuilder(args);
-
-builder.Services.AddDbContext<TechMoveDBContext>(options => options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Add services to the container.
 builder.Services.AddControllersWithViews();
+builder.Services.AddHttpClient();
 
 var app = builder.Build();
 

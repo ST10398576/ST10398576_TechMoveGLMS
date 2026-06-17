@@ -12,7 +12,6 @@ namespace ST10398576_TechMoveGLMS.Models
         [Required]
         public string ClientRegion { get; set; }
 
-        // Navigation property
         public ICollection<Contract>? Contracts { get; set; }  // make nullable
     }
 

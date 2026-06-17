@@ -1,150 +1,106 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using ST10398576_TechMoveGLMS.Models;
-using ST10398576_TechMoveGLMS.DBContext;
+using System.Text.Json;
+using System.Text;
 
 public class ClientsController : Controller
 {
-    private readonly TechMoveDBContext _context;
+    private readonly HttpClient _httpClient;
 
-    public ClientsController(TechMoveDBContext context)
+    public ClientsController(IHttpClientFactory httpClientFactory)
     {
-        _context = context;
+        _httpClient = httpClientFactory.CreateClient();
+        _httpClient.BaseAddress = new Uri("https://localhost:7066"); // API base URL
     }
 
-    // GET: CLIENTS
-    public async Task<IActionResult> Index()    
+    public async Task<IActionResult> Index()
     {
-        return View(await _context.Clients.ToListAsync());
+        var response = await _httpClient.GetAsync("/api/clients");
+        response.EnsureSuccessStatusCode();
+
+        var json = await response.Content.ReadAsStringAsync();
+        var clients = JsonSerializer.Deserialize<List<Client>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+        return View(clients);
     }
 
-    // GET: CLIENTS/Details/5
-    public async Task<IActionResult> Details(int? clientid)
+    public async Task<IActionResult> Details(int id)
     {
-        if (clientid == null)
-        {
-            return NotFound();
-        }
+        var response = await _httpClient.GetAsync($"/api/clients/{id}");
+        if (!response.IsSuccessStatusCode) return NotFound();
 
-        var client = await _context.Clients
-            .FirstOrDefaultAsync(m => m.ClientId == clientid);
-        if (client == null)
-        {
-            return NotFound();
-        }
+        var json = await response.Content.ReadAsStringAsync();
+        var client = JsonSerializer.Deserialize<Client>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         return View(client);
     }
 
-    // GET: CLIENTS/Create
-    public IActionResult Create()
-    {
-        return View();
-    }
+    public IActionResult Create() => View();
 
-    // POST: CLIENTS/Create
-    // To protect from overposting attacks, enable the specific properties you want to bind to.
-    // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create([Bind("ClientId,ClientName,ClientContactDetails,ClientRegion")] Client client)
+    public async Task<IActionResult> Create(Client client)
     {
         if (ModelState.IsValid)
         {
-            _context.Add(client);
-            await _context.SaveChangesAsync();
-            return RedirectToAction(nameof(Index));
+            var json = JsonSerializer.Serialize(client);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PostAsync("/api/clients", content);
+            if (response.IsSuccessStatusCode)
+                return RedirectToAction(nameof(Index));
         }
         return View(client);
     }
 
-    // GET: CLIENTS/Edit/5
-    public async Task<IActionResult> Edit(int? clientid)
+    public async Task<IActionResult> Edit(int id)
     {
-        if (clientid == null)
-        {
-            return NotFound();
-        }
+        var response = await _httpClient.GetAsync($"/api/clients/{id}");
+        if (!response.IsSuccessStatusCode) return NotFound();
 
-        var client = await _context.Clients.FindAsync(clientid);
-        if (client == null)
-        {
-            return NotFound();
-        }
+        var json = await response.Content.ReadAsStringAsync();
+        var client = JsonSerializer.Deserialize<Client>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
         return View(client);
     }
 
-    // POST: CLIENTS/Edit/5
-    // To protect from overposting attacks, enable the specific properties you want to bind to.
-    // For more details, see http://go.microsoft.com/fwlink/?LinkId=317598.
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int? clientid, [Bind("ClientId,ClientName,ClientContactDetails,ClientRegion")] Client client)
+    public async Task<IActionResult> Edit(int id, Client client)
     {
-        if (clientid != client.ClientId)
-        {
-            return NotFound();
-        }
+        if (id != client.ClientId) return NotFound();
 
         if (ModelState.IsValid)
         {
-            try
-            {
-                _context.Update(client);
-                await _context.SaveChangesAsync();
-            }
-            catch (DbUpdateConcurrencyException)
-            {
-                if (!ClientExists(client.ClientId))
-                {
-                    return NotFound();
-                }
-                else
-                {
-                    throw;
-                }
-            }
-            return RedirectToAction(nameof(Index));
+            var json = JsonSerializer.Serialize(client);
+            var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+            var response = await _httpClient.PutAsync($"/api/clients/{id}", content);
+            if (response.IsSuccessStatusCode)
+                return RedirectToAction(nameof(Index));
         }
         return View(client);
     }
 
-
-    // GET: CLIENTS/Delete/5
-    public async Task<IActionResult> Delete(int? clientid)
+    public async Task<IActionResult> Delete(int id)
     {
-        if (clientid == null)
-        {
-            return NotFound();
-        }
+        var response = await _httpClient.GetAsync($"/api/clients/{id}");
+        if (!response.IsSuccessStatusCode) return NotFound();
 
-        var client = await _context.Clients
-            .FirstOrDefaultAsync(m => m.ClientId == clientid);
-        if (client == null)
-        {
-            return NotFound();
-        }
+        var json = await response.Content.ReadAsStringAsync();
+        var client = JsonSerializer.Deserialize<Client>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
 
         return View(client);
     }
 
-    // POST: CLIENTS/Delete/5
     [HttpPost, ActionName("Delete")]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(int? clientid)
+    public async Task<IActionResult> DeleteConfirmed(int id)
     {
-        var client = await _context.Clients.FindAsync(clientid);
-        if (client != null)
-        {
-            _context.Clients.Remove(client);
-        }
+        var response = await _httpClient.DeleteAsync($"/api/clients/{id}");
+        if (response.IsSuccessStatusCode)
+            return RedirectToAction(nameof(Index));
 
-        await _context.SaveChangesAsync();
-        return RedirectToAction(nameof(Index));
-    }
-
-    private bool ClientExists(int? clientid)
-    {
-        return _context.Clients.Any(e => e.ClientId == clientid);
+        return NotFound();
     }
 }

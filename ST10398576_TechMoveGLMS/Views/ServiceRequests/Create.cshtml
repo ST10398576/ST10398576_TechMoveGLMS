@@ -1,43 +1,34 @@
 @model ST10398576_TechMoveGLMS.Models.ServiceRequest
-
 @{
     ViewData["Title"] = "Create Service Request";
 }
 
 <h2>Create Service Request</h2>
 
-<!-- Show validation errors -->
-<div asp-validation-summary="All" class="text-danger"></div>
-
-<form asp-action="Create" method="post" enctype="multipart/form-data">
+<form asp-action="Create" method="post">
     <div class="form-group">
-        <label asp-for="ContractId" class="control-label"> Contract ID </label>
-        <select asp-for="ContractId" class="form-control" asp-items="ViewBag.ContractId"></select>
-        <span asp-validation-for="ContractId" class="text-danger"></span>
+        <label>Contract ID</label>
+        <select asp-for="ContractId" class="form-control" asp-items="ViewBag.Contracts"></select>
     </div>
-
+    
     <div class="form-group">
-        <label asp-for="ServiceDescription" class="control-label"> Description </label>
+        <label>Description</label>
         <input asp-for="ServiceDescription" class="form-control" />
-        <span asp-validation-for="ServiceDescription" class="text-danger"></span>
     </div>
 
     <div class="form-group">
-        <label asp-for="ServiceCost" class="control-label"> Cost </label>
-        <input asp-for="ServiceCost" class="form-control" />
-        <span asp-validation-for="ServiceCost" class="text-danger"></span>
-        <small class="form-text text-muted">
-            Enter amount in USD — system will convert to ZAR automatically.
-        </small>
+        <label>Cost</label>
+        <input asp-for="ServiceCost" type="number" step="0.01" class="form-control" />
     </div>
 
     <div class="form-group">
-        <label asp-for="ServiceStatus" class="control-label"> Status </label>
-        <select asp-for="ServiceStatus" class="form-control" asp-items="ViewBag.StatusList"></select>
-        <span asp-validation-for="ServiceStatus" class="text-danger"></span>
+        <label>Status</label>
+        <select asp-for="ServiceStatus" class="form-control">
+            <option value="Pending">Pending</option>
+            <option value="Completed">Completed</option>
+        </select>
     </div>
 
-
-    <button type="submit" class="btn btn-primary">Create</button>
+    <button type="submit" class="btn btn-success">Create</button>
     <a asp-action="Index" class="btn btn-secondary">Back to List</a>
 </form>
