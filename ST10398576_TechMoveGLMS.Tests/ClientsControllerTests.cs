@@ -26,7 +26,7 @@ public class ClientsControllerTests
 
         return new HttpClient(handlerMock.Object)
         {
-            BaseAddress = new Uri("https://localhost:5001")
+            BaseAddress = new Uri("https://localhost:5000")
         };
     }
 

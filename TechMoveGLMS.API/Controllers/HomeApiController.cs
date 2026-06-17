@@ -1,10 +1,12 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using ST10398576_TechMoveGLMS.DBContext;
 using ST10398576_TechMoveGLMS.Models;
 
 namespace ST10398576_TechMoveGLMS.API.Controllers
 {
+    [Authorize]
     [Route("api/home")]
     [ApiController]
     public class HomeApiController : ControllerBase

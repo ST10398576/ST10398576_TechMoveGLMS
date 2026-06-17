@@ -1,0 +1,61 @@
+services:
+  st10398576-techmoveglms-sql-server:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: st10398576-techmoveglms-sql-server
+    environment:
+      SA_PASSWORD: "GLMSPass@2026"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1434:1433"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P GLMSPass@2026 -C -Q 'SELECT 1' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - st10398576-techmoveglms-network
+
+  st10398576-techmoveglms-backend-api:
+    build:
+      context: .
+      dockerfile: TechMoveGLMS.API/Dockerfile   # <-- corrected API folder
+    container_name: st10398576-techmoveglms-backend-api
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:80
+      ConnectionStrings__DefaultConnection: Server=st10398576-techmoveglms-sql-server;Database=GLMS;User Id=sa;Password=GLMSPass@2026;TrustServerCertificate=True;
+    ports:
+      - "5001:80"
+    depends_on:
+      st10398576-techmoveglms-sql-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost/swagger/index.html || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    networks:
+      - st10398576-techmoveglms-network
+
+  st10398576-techmoveglms-frontend-web:
+    build:
+      context: .
+      dockerfile: ST10398576_TechMoveGLMS/Dockerfile   # <-- frontend folder
+    container_name: st10398576-techmoveglms-frontend-web
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:80
+      ApiSettings__BaseUrl: http://st10398576-techmoveglms-backend-api/ 
+    ports:
+      - "5000:80"
+    depends_on:
+      st10398576-techmoveglms-backend-api:
+        condition: service_healthy
+    networks:
+    - st10398576-techmoveglms-network
+
+networks:
+  st10398576-techmoveglms-network:
+    driver: bridge

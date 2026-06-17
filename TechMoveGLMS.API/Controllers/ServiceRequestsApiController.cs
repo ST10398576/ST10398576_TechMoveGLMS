@@ -1,9 +1,11 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using ST10398576_TechMoveGLMS.Interfaces;
 using ST10398576_TechMoveGLMS.Models;
 
 namespace ST10398576_TechMoveGLMS.API.Controllers
 {
+    [Authorize]
     [ApiController]
     [Route("api/[controller]")]
     public class ServiceRequestsController : ControllerBase

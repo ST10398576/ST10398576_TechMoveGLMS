@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path="docker-compose.yml" />
+  </Folder>
   <Project Path="ST10398576_TechMoveGLMS.Tests/ST10398576_TechMoveGLMS.Tests.csproj" />
   <Project Path="ST10398576_TechMoveGLMS/ST10398576_TechMoveGLMS.csproj" />
   <Project Path="TechMoveGLMS.API/ST10398576_TechMoveGLMS.API.csproj" Id="03874318-7b9f-42b3-aaee-d95cfe05e3cd" />

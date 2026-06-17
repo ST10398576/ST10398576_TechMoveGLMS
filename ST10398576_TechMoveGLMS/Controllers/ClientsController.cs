@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using ST10398576_TechMoveGLMS.Models;
 using System.Text.Json;
 using System.Text;
+using System.Net.Http.Headers;
 
 public class ClientsController : Controller
 {
@@ -13,8 +14,19 @@ public class ClientsController : Controller
         _httpClient.BaseAddress = new Uri("https://localhost:7066"); // API base URL
     }
 
+    private void AttachToken()
+    {
+        var token = HttpContext.Session.GetString("JwtToken");
+        if (!string.IsNullOrEmpty(token))
+        {
+            _httpClient.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", token);
+        }
+    }
+
     public async Task<IActionResult> Index()
     {
+        AttachToken();
         var response = await _httpClient.GetAsync("/api/clients");
         response.EnsureSuccessStatusCode();
 
@@ -26,6 +38,7 @@ public class ClientsController : Controller
 
     public async Task<IActionResult> Details(int id)
     {
+        AttachToken();
         var response = await _httpClient.GetAsync($"/api/clients/{id}");
         if (!response.IsSuccessStatusCode) return NotFound();
 
@@ -41,6 +54,7 @@ public class ClientsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(Client client)
     {
+        AttachToken();
         if (ModelState.IsValid)
         {
             var json = JsonSerializer.Serialize(client);
@@ -55,6 +69,7 @@ public class ClientsController : Controller
 
     public async Task<IActionResult> Edit(int id)
     {
+        AttachToken();
         var response = await _httpClient.GetAsync($"/api/clients/{id}");
         if (!response.IsSuccessStatusCode) return NotFound();
 
@@ -68,6 +83,7 @@ public class ClientsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Edit(int id, Client client)
     {
+        AttachToken();
         if (id != client.ClientId) return NotFound();
 
         if (ModelState.IsValid)
@@ -84,6 +100,7 @@ public class ClientsController : Controller
 
     public async Task<IActionResult> Delete(int id)
     {
+        AttachToken();
         var response = await _httpClient.GetAsync($"/api/clients/{id}");
         if (!response.IsSuccessStatusCode) return NotFound();
 
@@ -97,6 +114,7 @@ public class ClientsController : Controller
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
+        AttachToken();
         var response = await _httpClient.DeleteAsync($"/api/clients/{id}");
         if (response.IsSuccessStatusCode)
             return RedirectToAction(nameof(Index));

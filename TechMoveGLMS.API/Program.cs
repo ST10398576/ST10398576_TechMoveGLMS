@@ -3,12 +3,51 @@ using ST10398576_TechMoveGLMS.DBContext;
 using ST10398576_TechMoveGLMS.Interfaces;
 using ST10398576_TechMoveGLMS.Services;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using System.Text;
+using System;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// In integration tests we set a "Testing" environment and the test project will
-// replace the DbContext with an in-memory provider. Skip registering SQL Server
-// when running in that environment to avoid multiple provider conflicts.
+// Add JWT Authentication
+// Prepare JWT signing key (support Base64-encoded keys or plain-text keys)
+var jwtKeyConfig = builder.Configuration["Jwt:Key"];
+if (string.IsNullOrWhiteSpace(jwtKeyConfig))
+{
+    throw new InvalidOperationException("Jwt:Key is not configured. Set Jwt:Key in appsettings or environment variables.");
+}
+
+byte[] jwtKeyBytes;
+try
+{
+    jwtKeyBytes = Convert.FromBase64String(jwtKeyConfig);
+}
+catch (FormatException)
+{
+    jwtKeyBytes = Encoding.UTF8.GetBytes(jwtKeyConfig);
+}
+
+if (jwtKeyBytes.Length < 32)
+{
+    throw new InvalidOperationException($"Configured JWT key is too short: {jwtKeyBytes.Length * 8} bits. Require at least 256 bits for HS256.");
+}
+
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateLifetime = true,
+            ValidateIssuerSigningKey = true,
+            ValidIssuer = builder.Configuration["Jwt:Issuer"],
+            ValidAudience = builder.Configuration["Jwt:Audience"],
+            IssuerSigningKey = new SymmetricSecurityKey(jwtKeyBytes)
+        };
+    });
+
 if (!builder.Environment.IsEnvironment("Testing"))
 {
     builder.Services.AddDbContext<TechMoveDBContext>(options =>
@@ -40,6 +79,7 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+
 app.UseAuthorization();
 app.MapControllers();
 app.Run();
