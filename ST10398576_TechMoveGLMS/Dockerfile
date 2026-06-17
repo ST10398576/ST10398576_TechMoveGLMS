@@ -13,7 +13,7 @@ RUN dotnet restore ./ST10398576_TechMoveGLMS/ST10398576_TechMoveGLMS.csproj
 
 # Copy everything else and build
 COPY . .
-WORKDIR /src/ST10398576_TechMoveGLMS
+WORKDIR /repos/ST10398576_TechMoveGLMS
 RUN dotnet build ST10398576_TechMoveGLMS.csproj -c Release -o /app/build
 
 # Publish stage
