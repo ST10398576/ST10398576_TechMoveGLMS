@@ -1,0 +1,36 @@
+﻿<Project Sdk="Microsoft.NET.Sdk.Web">
+
+	<PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.9" />
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="8.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.9" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.9">
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+      <PrivateAssets>all</PrivateAssets>
+    </PackageReference>
+    <PackageReference Include="Swashbuckle.AspNetCore" Version="8.0.10" />
+  </ItemGroup>
+
+	<!--
+    Compile the shared Model classes directly into this project instead of using a
+    ProjectReference to the MVC web project. A ProjectReference between two ASP.NET Core
+    projects also drags the referenced project's appsettings*.json files into this
+    project's publish output, colliding with this project's own appsettings*.json files
+    (NETSDK1152: "Found multiple publish output files with the same relative path").
+    Pulling in just the .cs files avoids that collision entirely.
+  -->
+	<ItemGroup>
+		<Compile Include="..\ST10398576_TechMoveGLMS\Models\**\*.cs">
+			<Link>SharedModels\%(RecursiveDir)%(Filename)%(Extension)</Link>
+		</Compile>
+	</ItemGroup>
+
+
+</Project>

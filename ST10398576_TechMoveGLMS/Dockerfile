@@ -1,27 +1,23 @@
-# Use the official ASP.NET Core runtime image
-FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS base
-WORKDIR /app
-EXPOSE 80
-
-# Build stage
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy csproj and restore dependencies
-COPY ST10398576_TechMoveGLMS/*.csproj ./ST10398576_TechMoveGLMS/
-RUN dotnet restore ./ST10398576_TechMoveGLMS/ST10398576_TechMoveGLMS.csproj
+# Copy the full project
+COPY ST10398576_TechMoveGLMS/. ./ST10398576_TechMoveGLMS/
 
-# Copy everything else and build
-COPY . .
-WORKDIR /repos/ST10398576_TechMoveGLMS
-RUN dotnet build ST10398576_TechMoveGLMS.csproj -c Release -o /app/build
+# Remove any Windows-generated obj/bin folders that may have been copied in.
+# These can contain a project.assets.json pointing at Visual Studio's local
+# NuGet fallback folder, which doesn't exist inside this Linux container.
+RUN rm -rf ./ST10398576_TechMoveGLMS/obj ./ST10398576_TechMoveGLMS/bin
 
-# Publish stage
-FROM build AS publish
-RUN dotnet publish ST10398576_TechMoveGLMS.csproj -c Release -o /app/publish /p:UseAppHost=false
+WORKDIR /src/ST10398576_TechMoveGLMS
+RUN dotnet restore ST10398576_TechMoveGLMS.csproj
+RUN dotnet publish ST10398576_TechMoveGLMS.csproj -c Release -o /app
 
-# Final runtime image
-FROM base AS final
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --from=build /app .
+
+ENV ASPNETCORE_HTTP_PORTS=8080
+EXPOSE 8080
+
 ENTRYPOINT ["dotnet", "ST10398576_TechMoveGLMS.dll"]

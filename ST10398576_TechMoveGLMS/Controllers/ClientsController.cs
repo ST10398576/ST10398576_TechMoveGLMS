@@ -1,124 +1,144 @@
 using Microsoft.AspNetCore.Mvc;
-using ST10398576_TechMoveGLMS.Models;
-using System.Text.Json;
-using System.Text;
+using System.Threading.Tasks;
+using Microsoft.AspNetCore.Http;
 using System.Net.Http.Headers;
+using System.Net.Http.Json;
+using ST10398576_TechMoveGLMS.Models;
 
-public class ClientsController : Controller
+namespace ST10398576_TechMoveGLMS.Controllers
 {
-    private readonly HttpClient _httpClient;
-
-    public ClientsController(IHttpClientFactory httpClientFactory)
+    public class ClientsController : Controller
     {
-        _httpClient = httpClientFactory.CreateClient();
-        _httpClient.BaseAddress = new Uri("https://localhost:7066"); // API base URL
-    }
+        private readonly IHttpClientFactory _httpFactory;
 
-    private void AttachToken()
-    {
-        var token = HttpContext.Session.GetString("JwtToken");
-        if (!string.IsNullOrEmpty(token))
+        public ClientsController(IHttpClientFactory httpFactory)
         {
-            _httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", token);
+            _httpFactory = httpFactory;
         }
-    }
 
-    public async Task<IActionResult> Index()
-    {
-        AttachToken();
-        var response = await _httpClient.GetAsync("/api/clients");
-        response.EnsureSuccessStatusCode();
-
-        var json = await response.Content.ReadAsStringAsync();
-        var clients = JsonSerializer.Deserialize<List<Client>>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-        return View(clients);
-    }
-
-    public async Task<IActionResult> Details(int id)
-    {
-        AttachToken();
-        var response = await _httpClient.GetAsync($"/api/clients/{id}");
-        if (!response.IsSuccessStatusCode) return NotFound();
-
-        var json = await response.Content.ReadAsStringAsync();
-        var client = JsonSerializer.Deserialize<Client>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-        return View(client);
-    }
-
-    public IActionResult Create() => View();
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Create(Client client)
-    {
-        AttachToken();
-        if (ModelState.IsValid)
+        private HttpClient CreateApiClient()
         {
-            var json = JsonSerializer.Serialize(client);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var client = _httpFactory.CreateClient("Api");
+            string? token = HttpContext?.Session?.GetString("JwtToken");
+            if (string.IsNullOrEmpty(token))
+            {
+                var auth = HttpContext?.Request?.Headers["Authorization"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(auth) && auth.StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+                {
+                    token = auth.Substring("Bearer ".Length).Trim();
+                }
+            }
 
-            var response = await _httpClient.PostAsync("/api/clients", content);
-            if (response.IsSuccessStatusCode)
-                return RedirectToAction(nameof(Index));
+            if (!string.IsNullOrEmpty(token))
+            {
+                client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            }
+            return client;
         }
-        return View(client);
-    }
 
-    public async Task<IActionResult> Edit(int id)
-    {
-        AttachToken();
-        var response = await _httpClient.GetAsync($"/api/clients/{id}");
-        if (!response.IsSuccessStatusCode) return NotFound();
-
-        var json = await response.Content.ReadAsStringAsync();
-        var client = JsonSerializer.Deserialize<Client>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-        return View(client);
-    }
-
-    [HttpPost]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Edit(int id, Client client)
-    {
-        AttachToken();
-        if (id != client.ClientId) return NotFound();
-
-        if (ModelState.IsValid)
+        public async Task<IActionResult> Index()
         {
-            var json = JsonSerializer.Serialize(client);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var client = CreateApiClient();
+            if (client == null) return RedirectToAction("Login", "Account");
 
-            var response = await _httpClient.PutAsync($"/api/clients/{id}", content);
-            if (response.IsSuccessStatusCode)
-                return RedirectToAction(nameof(Index));
+            var resp = await client.GetAsync("api/clients");
+            if (!resp.IsSuccessStatusCode) return StatusCode((int)resp.StatusCode);
+
+            var clients = await resp.Content.ReadFromJsonAsync<Client[]>();
+            return View(clients);
         }
-        return View(client);
-    }
 
-    public async Task<IActionResult> Delete(int id)
-    {
-        AttachToken();
-        var response = await _httpClient.GetAsync($"/api/clients/{id}");
-        if (!response.IsSuccessStatusCode) return NotFound();
+        public IActionResult Create()
+        {
+            return View();
+        }
 
-        var json = await response.Content.ReadAsStringAsync();
-        var client = JsonSerializer.Deserialize<Client>(json, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Create(Client clientModel)
+        {
+            if (!ModelState.IsValid) return View(clientModel);
 
-        return View(client);
-    }
+            var client = CreateApiClient();
+            if (client == null) return RedirectToAction("Login", "Account");
 
-    [HttpPost, ActionName("Delete")]
-    [ValidateAntiForgeryToken]
-    public async Task<IActionResult> DeleteConfirmed(int id)
-    {
-        AttachToken();
-        var response = await _httpClient.DeleteAsync($"/api/clients/{id}");
-        if (response.IsSuccessStatusCode)
-            return RedirectToAction(nameof(Index));
+            var resp = await client.PostAsJsonAsync("api/clients", clientModel);
+            if (!resp.IsSuccessStatusCode)
+            {
+                ModelState.AddModelError(string.Empty, "Unable to create client.");
+                return View(clientModel);
+            }
 
-        return NotFound();
+            return RedirectToAction("Index");
+        }
+
+        public async Task<IActionResult> Details(int id)
+        {
+            var client = CreateApiClient();
+            if (client == null) return RedirectToAction("Login", "Account");
+
+            var resp = await client.GetAsync($"api/clients/{id}");
+            if (!resp.IsSuccessStatusCode) return NotFound();
+
+            var model = await resp.Content.ReadFromJsonAsync<Client>();
+            return View(model);
+        }
+
+        public async Task<IActionResult> Edit(int id)
+        {
+            var client = CreateApiClient();
+            if (client == null) return RedirectToAction("Login", "Account");
+
+            var resp = await client.GetAsync($"api/clients/{id}");
+            if (!resp.IsSuccessStatusCode) return NotFound();
+
+            var model = await resp.Content.ReadFromJsonAsync<Client>();
+            return View(model);
+        }
+
+        [HttpPost]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> Edit(int id, Client clientModel)
+        {
+            if (id != clientModel.ClientId) return BadRequest();
+            if (!ModelState.IsValid) return View(clientModel);
+
+            var client = CreateApiClient();
+            if (client == null) return RedirectToAction("Login", "Account");
+
+            var resp = await client.PutAsJsonAsync($"api/clients/{id}", clientModel);
+            if (!resp.IsSuccessStatusCode)
+            {
+                ModelState.AddModelError(string.Empty, "Unable to update client.");
+                return View(clientModel);
+            }
+
+            return RedirectToAction("Index");
+        }
+
+        public async Task<IActionResult> Delete(int id)
+        {
+            var client = CreateApiClient();
+            if (client == null) return RedirectToAction("Login", "Account");
+
+            var resp = await client.GetAsync($"api/clients/{id}");
+            if (!resp.IsSuccessStatusCode) return NotFound();
+
+            var model = await resp.Content.ReadFromJsonAsync<Client>();
+            return View(model);
+        }
+
+        [HttpPost, ActionName("Delete")]
+        [ValidateAntiForgeryToken]
+        public async Task<IActionResult> DeleteConfirmed(int id)
+        {
+            var client = CreateApiClient();
+            if (client == null) return RedirectToAction("Login", "Account");
+
+            var resp = await client.DeleteAsync($"api/clients/{id}");
+            if (!resp.IsSuccessStatusCode) return StatusCode((int)resp.StatusCode);
+
+            return RedirectToAction("Index");
+        }
     }
 }

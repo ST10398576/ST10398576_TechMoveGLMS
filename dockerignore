@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.vscode/
+**/.git/
+.gitignore
+.gitattributes
+**/*.user
+**/*.csproj.Backup.tmp
+README.md
+worknote.txt

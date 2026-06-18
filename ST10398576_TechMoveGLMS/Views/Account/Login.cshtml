@@ -1,17 +1,64 @@
-﻿@model ST10398576_TechMoveGLMS.Controllers.LoginViewModel
+﻿@model ST10398576_TechMoveGLMS.Models.LoginViewModel
 
-<h2>Login</h2>
+@{
+    ViewData["Title"] = "Login";
+}
 
-<form asp-action="Login" method="post">
-    <div>
-        <label asp-for="Username"></label>
-        <input asp-for="Username" />
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h3 class="card-title mb-4 text-center">Sign in to your account</h3>
+
+                    @* Validation summary *@
+                    <partial name="_ValidationScriptsPartial" />
+                    <form asp-action="Login" method="post" class="needs-validation" novalidate>
+                        @Html.AntiForgeryToken()
+
+                        <div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+                        <div class="mb-3">
+                            <label asp-for="Username" class="form-label"></label>
+                            <input asp-for="Username" class="form-control" />
+                            <span asp-validation-for="Username" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Password" class="form-label"></label>
+                            <input asp-for="Password" class="form-control" />
+                            <span asp-validation-for="Password" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-primary">Sign in</button>
+                        </div>
+                    </form>
+
+                </div>
+                <div class="card-footer text-muted text-center small">
+                    Need an account? Contact the administrator.
+                </div>
+            </div>
+        </div>
     </div>
-    <div>
-        <label asp-for="Password"></label>
-        <input asp-for="Password" type="password" />
-    </div>
-    <button type="submit">Login</button>
-</form>
+</div>
 
-<div asp-validation-summary="All"></div>
+@section Scripts {
+    <script>
+        // Bootstrap client-side validation
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+            Array.prototype.slice.call(forms).forEach(function (form) {
+                form.addEventListener('submit', function (event) {
+                    if (!form.checkValidity()) {
+                        event.preventDefault()
+                        event.stopPropagation()
+                    }
+                    form.classList.add('was-validated')
+                }, false)
+            })
+        })()
+    </script>
+}

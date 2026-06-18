@@ -31,15 +31,21 @@
     </div>
 
     <div class="form-group">
-        <label asp-for="ContractStatus" class="control-label"> Status </label>
-        <select asp-for="ContractStatus" class="form-control" asp-items="ViewBag.StatusList"></select>
-        <span asp-validation-for="ContractStatus" class="text-danger"></span>
+        <select asp-for="ContractStatus" class="form-control">
+            <option value="Active">Active</option>
+            <option value="Completed">Completed</option>
+            <option value="On Hold">On Hold</option>
+            <option value="Expired">Expired</option>
+        </select>
     </div>
 
     <div class="form-group">
-        <label asp-for="ContractServiceLevel" class="control-label"> Service Level </label>
-        <select asp-for="ContractServiceLevel" class="form-control" asp-items="ViewBag.ServiceLevelList"></select>
-        <span asp-validation-for="ContractServiceLevel" class="text-danger"></span>
+        <label>Service Level</label>
+        <select asp-for="ContractServiceLevel" class="form-control">
+            <option value="High">High</option>
+            <option value="Medium">Medium</option>
+            <option value="Low">Low</option>
+        </select>
     </div>
 
         <div class="form-group">

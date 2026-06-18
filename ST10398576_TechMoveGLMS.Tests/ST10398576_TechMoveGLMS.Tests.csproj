@@ -8,20 +8,31 @@
   </PropertyGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.8" />
+		<PackageReference Include="Microsoft.EntityFrameworkCore.InMemory" Version="8.0.8" />
+	  <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="8.0.9" />
 	<PackageReference Include="Microsoft.NET.Test.Sdk" Version="18.6.0" />
 	  <PackageReference Include="xunit" Version="2.5.0" />
 	  <PackageReference Include="xunit.runner.visualstudio" Version="2.5.0" />
 	  <PackageReference Include="FluentAssertions" Version="6.12.0" />
 	  <PackageReference Include="Moq" Version="4.20.70" />
   </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\TechMoveGLMS.API\ST10398576_TechMoveGLMS.API.csproj" />
-  </ItemGroup>
+	<!-- Note: models are referenced via ProjectReference to the MVC project to avoid duplicate types -->
 
   <ItemGroup>
     <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<ProjectReference Include="..\TechMoveGLMS.API\TechMoveGLMS.API.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+	<!-- Include controller sources from the MVC project so unit tests can instantiate controllers
+	   without a full ProjectReference (avoids duplicate model types). Controllers will use
+	   the API project's model types via the API ProjectReference. -->
+	<Compile Include="..\ST10398576_TechMoveGLMS\Controllers\**\*.cs">
+		<Link>SharedControllers\%(RecursiveDir)%(Filename)%(Extension)</Link>
+	</Compile>
   </ItemGroup>
 
 </Project>

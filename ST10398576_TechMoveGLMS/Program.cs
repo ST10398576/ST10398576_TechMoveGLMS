@@ -1,32 +1,41 @@
+using System;
+using System.Net.Http.Headers;
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Services.AddHttpClient("API", client =>
+builder.Services.AddControllersWithViews();
+
+// Register an HttpClient named "Api" pointing to the API base URL from config
+builder.Services.AddHttpClient("Api", client =>
 {
-    client.BaseAddress = new Uri("https://localhost:7066"); // API base URL
+    client.BaseAddress = new Uri(builder.Configuration["ApiSettings:BaseUrl"]);
+    client.DefaultRequestHeaders.Accept.Clear();
+    client.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
 });
 
-// Add services to the container.
-builder.Services.AddSession();
-builder.Services.AddControllersWithViews();
-builder.Services.AddHttpClient();
+// In-memory session store so JWT can persist until browser is closed (session cookie)
+builder.Services.AddDistributedMemoryCache();
+builder.Services.AddSession(options =>
+{
+    // Session cookie will be a session cookie (no explicit expiration) and persist until browser closed
+    options.IdleTimeout = TimeSpan.FromHours(8);
+    options.Cookie.HttpOnly = true;
+    options.Cookie.IsEssential = true;
+});
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (!app.Environment.IsDevelopment())
 {
     app.UseExceptionHandler("/Home/Error");
-    // The default HSTS value is 30 days. You may want to change this for production scenarios, see https://aka.ms/aspnetcore-hsts.
-    app.UseHsts();
 }
 
-app.UseHttpsRedirection();
+app.UseStaticFiles();
 app.UseRouting();
 
 app.UseSession();
-
-app.UseAuthorization();
-
 
 app.MapControllerRoute(
     name: "default",

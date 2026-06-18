@@ -26,7 +26,7 @@ public class ContractsControllerTests
 
         return new HttpClient(handlerMock.Object)
         {
-            BaseAddress = new Uri("https://localhost:7066")
+            BaseAddress = new Uri("http://localhost:5002")
         };
     }
 
