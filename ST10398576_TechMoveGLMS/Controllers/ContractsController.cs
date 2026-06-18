@@ -142,13 +142,32 @@ namespace ST10398576_TechMoveGLMS.Controllers
 
         [HttpPost]
         [ValidateAntiForgeryToken]
-        public async Task<IActionResult> Edit(int id, Contract contract)
+        public async Task<IActionResult> Edit(int id, Contract contract, IFormFile? AgreementPdf = null)
         {
             if (!AttachToken()) return RedirectToAction("Login", "Account");
             if (id != contract.ContractId) return NotFound();
 
             if (ModelState.IsValid)
             {
+                // Handle uploaded PDF (if provided) and set PdfFilePath so the API persists it
+                if (AgreementPdf != null && AgreementPdf.Length > 0)
+                {
+                    var originalFileName = Path.GetFileName(AgreementPdf.FileName);
+                    var ext = Path.GetExtension(originalFileName);
+                    if (string.Equals(ext, ".pdf", StringComparison.OrdinalIgnoreCase))
+                    {
+                        var webRoot = _env?.WebRootPath ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
+                        var uploadsDir = Path.Combine(webRoot, "uploads", "contracts");
+                        Directory.CreateDirectory(uploadsDir);
+                        var safeFileName = Guid.NewGuid().ToString("N") + ext;
+                        var filePath = Path.Combine(uploadsDir, safeFileName);
+                        using (var stream = new FileStream(filePath, FileMode.Create))
+                        {
+                            await AgreementPdf.CopyToAsync(stream);
+                        }
+                        contract.PdfFilePath = "/uploads/contracts/" + safeFileName;
+                    }
+                }
                 var json = JsonSerializer.Serialize(contract);
                 var content = new StringContent(json, Encoding.UTF8, "application/json");
                 var response = await _httpClient.PutAsync($"/api/contracts/{id}", content);
