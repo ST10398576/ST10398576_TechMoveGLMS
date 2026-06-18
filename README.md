@@ -2,7 +2,7 @@
 
 
 ## YouTube Link
-https://youtu.be/OxNbVBOPWik
+https://youtu.be/ZhFjNJvdQeM
 
 
 ## Database Migration Scripts
